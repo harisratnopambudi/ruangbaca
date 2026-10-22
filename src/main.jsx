@@ -873,18 +873,15 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
     const rounded = Math.round(pct);
     let label = `${rounded}% selesai`;
-    if (epubObj?.locations && epubObj.locations.total > 0 && loc.start.cfi) {
-      try {
-        const currPage = epubObj.locations.locationFromCfi(loc.start.cfi);
-        const totalPages = epubObj.locations.total;
-        if (currPage && totalPages) {
-          label = `Hal. ${currPage} dari ${totalPages} · ${rounded}% selesai`;
-        }
-      } catch {}
-    } else if (epubObj?.spine?.items?.length > 1) {
-      const currChapter = (loc.start.index ?? 0) + 1;
-      const totalChapters = epubObj.spine.items.length;
-      label = `Bagian ${currChapter} dari ${totalChapters} · ${rounded}% selesai`;
+    // Nomor halaman nyata (per layar) di dalam bab yang sedang dibuka.
+    // Selalu naik/turun 1 setiap klik Next/Previous.
+    const dp = loc.start.displayed;
+    const spineTotal = epubObj?.spine?.items?.length || 0;
+    const chapterNo = (loc.start.index ?? 0) + 1;
+    if (dp && dp.total > 1) {
+      label = `Hal. ${dp.page} dari ${dp.total} (bab ${chapterNo}/${spineTotal}) · ${rounded}% selesai`;
+    } else if (spineTotal > 1) {
+      label = `Bab ${chapterNo} dari ${spineTotal} · ${rounded}% selesai`;
     }
 
     return { percentage: pct, label };
