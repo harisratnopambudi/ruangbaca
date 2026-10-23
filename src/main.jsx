@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter
+  Pencil, Bookmark, Highlighter, Download
 } from 'lucide-react';
 import './styles.css';
 
@@ -55,6 +55,31 @@ const HIGHLIGHT_COLORS = {
   pink: { id: 'pink', label: 'Pink', hex: '#f472b6', border: '#db2777', text: '#9d174d' },
   orange: { id: 'orange', label: 'Oranye', hex: '#fdba74', border: '#ea580c', text: '#9a3412' },
   purple: { id: 'purple', label: 'Ungu', hex: '#d8b4fe', border: '#9333ea', text: '#6b21a8' }
+};
+
+// Unduh / ekspor file EPUB asli dari Supabase Storage
+const safeFileName = title =>
+  String(title || 'buku').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'buku';
+
+const downloadEpub = async (book, notify) => {
+  if (!book?.file_path) { notify?.('File buku tidak ditemukan.', 'error'); return; }
+  try {
+    notify?.('Menyiapkan unduhan…');
+    const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
+    if (error) throw error;
+    const blob = new Blob([data], { type: 'application/epub+zip' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeFileName(book.title)}.epub`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    notify?.('Unduhan dimulai.');
+  } catch (e) {
+    notify?.(e?.message || 'Gagal mengunduh buku.', 'error');
+  }
 };
 
 // Efek kertas saat ganti halaman / swipe
@@ -671,6 +696,7 @@ function App() {
                     onOpen={() => openBook(book)}
                     onEdit={(e) => startEditBook(book, e)}
                     onDelete={() => deleteBook(book)}
+                    onDownload={() => downloadEpub(book, notify)}
                   />
                 ))}
               </div>
@@ -746,7 +772,7 @@ function App() {
   );
 }
 
-function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete}) {
+function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload}) {
   const colors = coverColors(book.title);
   const percentage = Math.min(100, Math.max(0, Number(progress?.percentage || 0)));
   return <article className="book-card">
@@ -772,6 +798,9 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete}) {
         <div className="book-card-actions">
           <button className="edit-button" title="Ubah judul atau penulis" onClick={onEdit}>
             <Pencil size={13}/>
+          </button>
+          <button className="download-button" title="Unduh file EPUB" onClick={onDownload}>
+            <Download size={14}/>
           </button>
           <button className="delete-button" title="Hapus buku" onClick={onDelete}>
             <Trash2 size={15}/>
@@ -1624,6 +1653,15 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
           onClick={() => { setSettingsOpen(v => !v); if (!settingsOpen) setNavPanelOpen(false); }}
         >
           <SlidersHorizontal size={18}/>
+        </button>
+
+        {/* Download EPUB */}
+        <button
+          className="icon-button"
+          title="Unduh file EPUB"
+          onClick={() => downloadEpub({ ...book, title: book.title || bookTitle }, notify)}
+        >
+          <Download size={17}/>
         </button>
 
         {/* Save Progress */}
