@@ -597,9 +597,131 @@ function App() {
     }
   };
 
-  const filteredBooks = useMemo(() => books.filter(book =>
+  // ---------- Urutan rak buku (drag & drop), disimpan per akun di browser ----------
+  const [order, setOrder] = useState([]);
+  const [draggingId, setDraggingId] = useState(null);
+  const dragRef = useRef(null);
+  const orderedIdsRef = useRef([]);
+  const userId = session?.user?.id;
+
+  useEffect(() => {
+    if (!userId) { setOrder([]); return; }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rb_order_${userId}`) || '[]');
+      setOrder(Array.isArray(saved) ? saved : []);
+    } catch { setOrder([]); }
+  }, [userId]);
+
+  const orderedBooks = useMemo(() => {
+    const pos = new Map(order.map((id, i) => [id, i]));
+    const fresh = books.filter(b => !pos.has(b.id));
+    const known = books.filter(b => pos.has(b.id)).sort((a, b) => pos.get(a.id) - pos.get(b.id));
+    return [...fresh, ...known];
+  }, [books, order]);
+  orderedIdsRef.current = orderedBooks.map(b => b.id);
+
+  const moveBook = (dragId, overId) => {
+    const ids = orderedIdsRef.current.slice();
+    const from = ids.indexOf(dragId);
+    const to = ids.indexOf(overId);
+    if (from < 0 || to < 0 || from === to) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, dragId);
+    orderedIdsRef.current = ids;
+    setOrder(ids);
+    try { if (userId) localStorage.setItem(`rb_order_${userId}`, JSON.stringify(ids)); } catch {}
+  };
+
+  const startCardDrag = (e, bookId) => {
+    if (query || dragRef.current) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.target.closest('.book-card-actions')) return;
+    const card = e.currentTarget;
+    const isTouch = e.pointerType !== 'mouse';
+    const st = {
+      id: bookId, card, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY,
+      active: false, timer: null, raf: 0, ghost: null, dx: 0, dy: 0
+    };
+    dragRef.current = st;
+
+    const hitTest = () => {
+      const el = document.elementFromPoint(st.x, st.y);
+      const target = el?.closest?.('.book-card[data-id]');
+      if (target && target.dataset.id !== st.id) moveBook(st.id, target.dataset.id);
+    };
+    const tick = () => {
+      if (!st.active) return;
+      const edge = 90;
+      if (st.y < edge) window.scrollBy(0, -Math.ceil((edge - st.y) / 5));
+      else if (st.y > window.innerHeight - edge) window.scrollBy(0, Math.ceil((st.y - (window.innerHeight - edge)) / 5));
+      hitTest();
+      st.raf = requestAnimationFrame(tick);
+    };
+    const begin = () => {
+      st.active = true;
+      const r = card.getBoundingClientRect();
+      st.dx = st.x - r.left;
+      st.dy = st.y - r.top;
+      const g = card.cloneNode(true);
+      g.removeAttribute('data-id');
+      Object.assign(g.style, {
+        position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`,
+        margin: '0', zIndex: '9999', pointerEvents: 'none', opacity: '.95',
+        transform: 'scale(1.06) rotate(-2deg)', transition: 'transform .15s ease',
+        filter: 'drop-shadow(0 14px 22px rgba(0,0,0,.32))'
+      });
+      g.classList.remove('is-drag-source');
+      document.body.appendChild(g);
+      st.ghost = g;
+      document.body.classList.add('is-dragging-card');
+      setDraggingId(st.id);
+      try { navigator.vibrate?.(15); } catch {}
+      st.raf = requestAnimationFrame(tick);
+    };
+    const onMove = ev => {
+      st.x = ev.clientX; st.y = ev.clientY;
+      if (!st.active) {
+        const moved = Math.hypot(st.x - st.sx, st.y - st.sy);
+        if (isTouch) { if (moved > 10) cleanup(false); }
+        else if (moved > 6) begin();
+        return;
+      }
+      st.ghost.style.left = `${st.x - st.dx}px`;
+      st.ghost.style.top = `${st.y - st.dy}px`;
+    };
+    const blockScroll = ev => { if (st.active && ev.cancelable) ev.preventDefault(); };
+    const onUp = () => cleanup(true);
+    const stopClick = ev => { ev.stopPropagation(); ev.preventDefault(); };
+
+    function cleanup(finished) {
+      clearTimeout(st.timer);
+      cancelAnimationFrame(st.raf);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      document.removeEventListener('touchmove', blockScroll);
+      if (st.active) {
+        st.ghost?.remove();
+        document.body.classList.remove('is-dragging-card');
+        setDraggingId(null);
+        if (finished) {
+          window.addEventListener('click', stopClick, { capture: true, once: true });
+          setTimeout(() => window.removeEventListener('click', stopClick, true), 80);
+        }
+      }
+      dragRef.current = null;
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+    document.addEventListener('touchmove', blockScroll, { passive: false });
+    if (isTouch) st.timer = setTimeout(begin, 350);
+  };
+
+  const filteredBooks = useMemo(() => orderedBooks.filter(book =>
     `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
-  ), [books, query]);
+  ), [orderedBooks, query]);
 
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Baca…</span></div>;
@@ -685,6 +807,8 @@ function App() {
                 {!query && <button className="secondary-button" onClick={() => fileInput.current?.click()} disabled={uploadBusy}><UploadCloud size={17}/> {uploadBusy ? 'Mengunggah…' : 'Unggah EPUB (Bisa Banyak)'}</button>}
               </div>
              ) : (
+              <>
+              {!query && filteredBooks.length > 1 && <p className="drag-hint">Tahan lalu geser sampul untuk mengatur urutan buku.</p>}
               <div className="book-grid">
                 {filteredBooks.map((book, index) => (
                   <BookCard
@@ -697,9 +821,12 @@ function App() {
                     onEdit={(e) => startEditBook(book, e)}
                     onDelete={() => deleteBook(book)}
                     onDownload={() => downloadEpub(book, notify)}
+                    dragging={draggingId === book.id}
+                    onPointerDown={query ? undefined : (e) => startCardDrag(e, book.id)}
                   />
                 ))}
               </div>
+              </>
              )}
             <div className="privacy-note"><span className="privacy-dot"></span> Koleksi ini privat untuk akun Anda. Masuk dengan akun yang sama untuk mengaksesnya di perangkat lain.</div>
           </section>
@@ -772,10 +899,16 @@ function App() {
   );
 }
 
-function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload}) {
+function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, dragging, onPointerDown}) {
   const colors = coverColors(book.title);
   const percentage = Math.min(100, Math.max(0, Number(progress?.percentage || 0)));
-  return <article className="book-card">
+  return <article
+    className={`book-card${dragging ? ' is-drag-source' : ''}`}
+    data-id={book.id}
+    onPointerDown={onPointerDown}
+    onContextMenu={e => { if (onPointerDown && e.pointerType !== 'mouse' && e.nativeEvent?.pointerType !== 'mouse') e.preventDefault(); }}
+    onDragStart={e => e.preventDefault()}
+  >
     <button className="cover-button" onClick={onOpen} aria-label={`Baca ${book.title}`}>
       {cover ? (
         <div className="book-cover-image-wrap">
