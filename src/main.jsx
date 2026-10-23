@@ -338,9 +338,10 @@ function App() {
   const loadBooks = useCallback(async () => {
     if (!supabase || !session?.user) return;
     setLoadingBooks(true);
-    const [{ data: bookRows, error: bookError }, { data: progressRows, error: progressError }] = await Promise.all([
+    const [{ data: bookRows, error: bookError }, { data: progressRows, error: progressError }, orderRes] = await Promise.all([
       supabase.from('books').select('*').order('created_at', { ascending: false }),
-      supabase.from('reading_progress').select('*')
+      supabase.from('reading_progress').select('*'),
+      supabase.from('shelf_order').select('book_ids').maybeSingle()
     ]);
     setLoadingBooks(false);
     if (bookError || progressError) {
@@ -349,6 +350,14 @@ function App() {
     }
     const booksList = bookRows || [];
     setBooks(booksList);
+    // Urutan rak dari cloud (sinkron antar perangkat). Jika belum ada, pakai cache lokal.
+    const cloudOrder = orderRes?.data?.book_ids;
+    if (Array.isArray(cloudOrder)) {
+      setOrder(cloudOrder);
+      try { localStorage.setItem(`rb_order_${session.user.id}`, JSON.stringify(cloudOrder)); } catch {}
+    } else if (orderRes?.error) {
+      console.warn('Urutan rak belum bisa disinkronkan (tabel shelf_order belum dibuat?):', orderRes.error.message);
+    }
     const map = {};
     (progressRows || []).forEach(row => { map[row.book_id] = row; });
     booksList.forEach(b => {
@@ -632,6 +641,23 @@ function App() {
     try { if (userId) localStorage.setItem(`rb_order_${userId}`, JSON.stringify(ids)); } catch {}
   };
 
+  const saveOrderTimer = useRef(null);
+  const warnedOrder = useRef(false);
+  const saveOrderToCloud = () => {
+    if (!supabase || !userId) return;
+    clearTimeout(saveOrderTimer.current);
+    saveOrderTimer.current = setTimeout(async () => {
+      const { error } = await supabase.from('shelf_order').upsert(
+        { user_id: userId, book_ids: orderedIdsRef.current, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+      if (error && !warnedOrder.current) {
+        warnedOrder.current = true;
+        notify('Urutan tersimpan di perangkat ini, tapi belum tersinkron ke akun. Jalankan SQL shelf_order di Supabase.', 'error');
+      }
+    }, 400);
+  };
+
   const startCardDrag = (e, bookId) => {
     if (query || dragRef.current) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -705,6 +731,7 @@ function App() {
         document.body.classList.remove('is-dragging-card');
         setDraggingId(null);
         if (finished) {
+          saveOrderToCloud();
           window.addEventListener('click', stopClick, { capture: true, once: true });
           setTimeout(() => window.removeEventListener('click', stopClick, true), 80);
         }
