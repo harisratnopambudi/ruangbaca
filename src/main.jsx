@@ -1069,7 +1069,12 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
         <h3 title={book.title}>{book.title}</h3>
         <div className="book-card-actions">
           {shared ? (
-            <span className="shared-badge" title="Buku ini dibagikan oleh admin">Dibagikan</span>
+            <>
+              <span className="shared-badge" title="Buku ini dibagikan oleh admin">Dibagikan</span>
+              <button className="download-button" title="Unduh file EPUB" onClick={onDownload}>
+                <Download size={14}/>
+              </button>
+            </>
           ) : (
             <>
               {isAdmin && (
@@ -1953,15 +1958,13 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
         </button>
 
         {/* Download EPUB */}
-        {book.user_id === userId && (
-          <button
-            className="icon-button"
-            title="Unduh file EPUB"
-            onClick={() => downloadEpub({ ...book, title: book.title || bookTitle }, notify)}
-          >
-            <Download size={17}/>
-          </button>
-        )}
+        <button
+          className="icon-button"
+          title="Unduh file EPUB"
+          onClick={() => downloadEpub({ ...book, title: book.title || bookTitle }, notify)}
+        >
+          <Download size={17}/>
+        </button>
 
         {/* Save Progress */}
         <button className="icon-button" title="Simpan progres sekarang" onClick={saveNow}>
