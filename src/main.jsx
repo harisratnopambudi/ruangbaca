@@ -1001,7 +1001,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
             if (e?.stopPropagation) e.stopPropagation();
             onHighlightClicked(hl.id, hl.cfi_range, e);
           },
-          `rb-hl rb-hl-${hl.color}`,
+          `rb-hl-${hl.color}`,
           getHighlightStyle(hl.color, theme)
         );
       } catch (e) {
@@ -1390,7 +1390,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
           if (e?.stopPropagation) e.stopPropagation();
           onHighlightClicked(newHighlight.id, cfiRange, e);
         },
-        `rb-hl rb-hl-${colorId}`,
+        `rb-hl-${colorId}`,
         getHighlightStyle(colorId, readerTheme)
       );
     } catch (err) {
@@ -1455,7 +1455,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
           if (e?.stopPropagation) e.stopPropagation();
           onHighlightClicked(hl.id, hl.cfi_range, e);
         },
-        `rb-hl rb-hl-${newColor}`,
+        `rb-hl-${newColor}`,
         getHighlightStyle(newColor, readerTheme)
       );
     } catch (err) {
