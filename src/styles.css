@@ -319,3 +319,13 @@ svg.marks-pane rect,
 body.is-dragging-card{user-select:none;-webkit-user-select:none;cursor:grabbing}
 body.is-dragging-card *{cursor:grabbing !important}
 .drag-hint{margin:0 0 14px;font-size:12px;color:var(--muted)}
+
+/* Rapikan kartu: tinggi judul selalu 2 baris supaya semua kartu sejajar */
+.book-grid{align-items:start}
+.book-title-row h3{flex:1;min-width:0;min-height:calc(2 * 1.45em);word-break:break-word;overflow-wrap:anywhere}
+.book-card-actions{flex-shrink:0;margin-top:-2px}
+.book-author{margin:4px 0 10px}
+@media (orientation: portrait) and (max-width: 900px){
+  .book-title-row h3{min-height:calc(2 * 1.25em);width:100%}
+  .book-author{margin:3px 0 8px}
+}
