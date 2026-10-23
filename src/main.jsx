@@ -57,6 +57,26 @@ const HIGHLIGHT_COLORS = {
   purple: { id: 'purple', label: 'Ungu', hex: '#d8b4fe', border: '#9333ea', text: '#6b21a8' }
 };
 
+// Efek kertas saat ganti halaman / swipe
+const paperTransform = (el, dx, animate, fade) => {
+  if (!el) return;
+  const w = el.clientWidth || 600;
+  const p = Math.min(1, Math.abs(dx) / w);
+  el.style.transition = animate
+    ? 'transform .2s cubic-bezier(.22,.8,.3,1), opacity .2s ease, box-shadow .2s ease'
+    : 'none';
+  el.style.transform = dx === 0 ? 'none' : `translateX(${dx}px) rotateY(${(-dx / w) * 10}deg)`;
+  el.style.opacity = String(fade ?? (1 - p * 0.35));
+  el.style.boxShadow = dx === 0 ? 'none' : `${dx > 0 ? '-' : ''}14px 0 34px rgba(0,0,0,${(0.08 + p * 0.22).toFixed(2)})`;
+};
+const paperReset = el => {
+  if (!el) return;
+  el.style.transition = 'none';
+  el.style.transform = '';
+  el.style.opacity = '';
+  el.style.boxShadow = '';
+};
+
 const getHighlightStyle = (colorId, theme) => {
   const c = HIGHLIGHT_COLORS[colorId] || HIGHLIGHT_COLORS.yellow;
   return {
@@ -836,6 +856,12 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
     localStorage.setItem('rb_reader_viewmode', viewMode);
   }, [readerTheme, fontSize, fontFamily, lineHeight, pageMargin, textAlign, viewMode]);
 
+  const turnRef = useRef(null);
+  const turningRef = useRef(false);
+  const swipeRef = useRef(null);
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+
   const calculateProgress = useCallback((epubObj, loc) => {
     if (!loc || !loc.start) return { percentage: 0, label: 'Mulai membaca' };
 
@@ -944,6 +970,9 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
       'a': {
         'color': `${cfg.linkColor} !important`
       },
+      'html, body': {
+        'touch-action': 'pan-y'
+      },
       'img': {
         'max-width': '100% !important',
         'height': 'auto !important'
@@ -1013,6 +1042,57 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
       syncSvgRectAttributes(r);
     }, 50);
   }, [onHighlightClicked, syncSvgRectAttributes]);
+
+  const attachSwipe = useCallback((r) => {
+    if (!r) return;
+    r.on('touchstart', (e) => {
+      if (viewModeRef.current === 'scroll' || turningRef.current || (e.touches && e.touches.length > 1)) {
+        swipeRef.current = null;
+        return;
+      }
+      const t = e.touches?.[0];
+      if (!t) { swipeRef.current = null; return; }
+      swipeRef.current = { x: t.screenX, y: t.screenY, t0: Date.now(), dx: 0, active: false, dead: false };
+    });
+    r.on('touchmove', (e, contents) => {
+      const s = swipeRef.current;
+      if (!s || s.dead) return;
+      const t = e.touches?.[0];
+      if (!t) return;
+      const dx = t.screenX - s.x;
+      const dy = t.screenY - s.y;
+      if (!s.active) {
+        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; }
+        if (Math.abs(dx) < 10) return;
+        const sel = contents?.window?.getSelection?.();
+        if (sel && sel.toString().trim()) { s.dead = true; return; }
+        s.active = true;
+        setSelectionPopover(null);
+      }
+      s.dx = dx;
+      const loc = r.currentLocation?.();
+      const blocked = (dx < 0 && loc?.atEnd) || (dx > 0 && loc?.atStart);
+      paperTransform(viewerRef.current, blocked ? dx * 0.25 : dx, false);
+    });
+    r.on('touchend', () => {
+      const s = swipeRef.current;
+      swipeRef.current = null;
+      if (!s || !s.active) return;
+      const dt = Math.max(1, Date.now() - s.t0);
+      const fast = Math.abs(s.dx) / dt > 0.5 && Math.abs(s.dx) > 30;
+      if (Math.abs(s.dx) > 70 || fast) {
+        turnRef.current?.(s.dx < 0 ? 'next' : 'prev');
+      } else {
+        const el = viewerRef.current;
+        paperTransform(el, 0, true);
+        setTimeout(() => paperReset(el), 240);
+      }
+    });
+    r.on('keyup', (e) => {
+      if (e.key === 'ArrowRight') turnRef.current?.('next');
+      else if (e.key === 'ArrowLeft') turnRef.current?.('prev');
+    });
+  }, []);
 
   const handleSelection = useCallback((cfiRange, contents) => {
     if (!cfiRange || !contents) return;
@@ -1178,6 +1258,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
         // Register highlights
         registerHighlights(rendition, highlightsRef.current, readerTheme);
+        attachSwipe(rendition);
 
         rendition.on('selected', (cfiRange, contents) => {
           handleSelection(cfiRange, contents);
@@ -1269,6 +1350,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
     applyReadingStyles(rendition, readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign);
     registerHighlights(rendition, highlightsRef.current, readerTheme);
+    attachSwipe(rendition);
 
     rendition.on('selected', (cfiRange, contents) => {
       handleSelection(cfiRange, contents);
@@ -1294,11 +1376,37 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
     await rendition.display(targetCfi || undefined);
   };
 
-  const move = direction => {
+  const turn = async direction => {
     const r = renditionRef.current;
-    if (!r) return;
-    direction === 'next' ? r.next() : r.prev();
+    if (!r || turningRef.current) return;
+    const el = viewerRef.current;
+    if (!el || viewModeRef.current === 'scroll') {
+      direction === 'next' ? r.next() : r.prev();
+      return;
+    }
+    const loc = r.currentLocation?.();
+    if (direction === 'next' ? loc?.atEnd : loc?.atStart) {
+      paperTransform(el, 0, true);
+      setTimeout(() => paperReset(el), 240);
+      return;
+    }
+    turningRef.current = true;
+    const w = el.clientWidth || 600;
+    const sign = direction === 'next' ? -1 : 1;
+    // 1. halaman lama bergeser keluar seperti kertas
+    paperTransform(el, sign * w * 0.5, true, 0);
+    await new Promise(res => setTimeout(res, 190));
+    // 2. ganti isi halaman saat tersembunyi
+    try { await (direction === 'next' ? r.next() : r.prev()); } catch {}
+    await new Promise(res => setTimeout(res, 40));
+    // 3. halaman baru masuk dari sisi berlawanan
+    paperTransform(el, -sign * w * 0.16, false, 0);
+    void el.offsetWidth;
+    paperTransform(el, 0, true, 1);
+    setTimeout(() => { paperReset(el); turningRef.current = false; }, 240);
   };
+  turnRef.current = turn;
+  const move = direction => turn(direction);
   const goTo = href => { renditionRef.current?.display(href); };
 
   const handleClose = () => {
