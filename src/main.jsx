@@ -403,6 +403,7 @@ function App() {
   const processFiles = async (fileList) => {
     const rawFiles = Array.from(fileList || []);
     if (!rawFiles.length) return;
+    if (!canUpload) { notify('Hubungi admin untuk mendapatkan akses buku terlebih dahulu. Setelah ada buku yang dibagikan, kamu bisa menambah EPUB sendiri.', 'error'); return; }
 
     const epubFiles = rawFiles.filter(f => f.name.toLowerCase().endsWith('.epub'));
     if (!epubFiles.length) {
@@ -485,6 +486,14 @@ function App() {
 
     setUploadBusy(false);
     setUploadProgress({ current: 0, total: 0 });
+  };
+
+  const onAddBookClick = () => {
+    if (!canUpload) {
+      notify('Kamu belum punya buku yang dibagikan. Hubungi admin untuk mendapatkan akses buku terlebih dahulu.', 'error');
+      return;
+    }
+    fileInput.current?.click();
   };
 
   const uploadBook = async event => {
@@ -753,6 +762,7 @@ function App() {
   const [accessLoading, setAccessLoading] = useState(false);
   const [accessBusy, setAccessBusy] = useState(false);
   const [accessInput, setAccessInput] = useState('');
+  const canUpload = isAdmin || books.some(b => b.user_id !== userId);
 
   useEffect(() => {
     let alive = true;
@@ -876,7 +886,7 @@ function App() {
               <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
               <div className="shelf-tools">
                 <label className="searchbox"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
-                <button className="primary-button" onClick={() => fileInput.current?.click()} disabled={uploadBusy}>
+                <button className="primary-button" onClick={onAddBookClick} disabled={uploadBusy}>
                   {uploadBusy ? <LoaderCircle size={17} className="spin"/> : <Plus size={18}/>}
                   {uploadBusy
                     ? (uploadProgress.total > 1 ? `Mengunggah (${uploadProgress.current}/${uploadProgress.total})…` : 'Mengunggah…')
@@ -891,8 +901,8 @@ function App() {
               <div className="empty-state">
                 <div className="empty-icon"><BookMarked size={27}/></div>
                 <h3>{query ? 'Buku tidak ditemukan' : 'Rak buku masih kosong'}</h3>
-                <p>{query ? 'Coba kata kunci yang berbeda.' : 'Unggah file EPUB Anda. Anda bisa memilih banyak file sekaligus atau menyeretnya ke sini.'}</p>
-                {!query && <button className="secondary-button" onClick={() => fileInput.current?.click()} disabled={uploadBusy}><UploadCloud size={17}/> {uploadBusy ? 'Mengunggah…' : 'Unggah EPUB (Bisa Banyak)'}</button>}
+                <p>{query ? 'Coba kata kunci yang berbeda.' : canUpload ? 'Unggah file EPUB Anda. Anda bisa memilih banyak file sekaligus atau menyeretnya ke sini.' : 'Hubungi admin untuk mendapatkan akses buku. Buku yang dibagikan admin akan muncul di sini.'}</p>
+                {!query && <button className="secondary-button" onClick={onAddBookClick} disabled={uploadBusy}><UploadCloud size={17}/> {uploadBusy ? 'Mengunggah…' : 'Unggah EPUB (Bisa Banyak)'}</button>}
               </div>
              ) : (
               <>
@@ -909,7 +919,8 @@ function App() {
                     onEdit={(e) => startEditBook(book, e)}
                     onDelete={() => deleteBook(book)}
                     onDownload={() => downloadEpub(book, notify)}
-                    shared={book.user_id !== userId}
+                    shared={!isAdmin && book.user_id !== userId}
+                    ownerLabel={isAdmin && book.user_id !== userId ? (book.uploader_email || 'pengguna lain') : null}
                     isAdmin={isAdmin}
                     onAccess={() => openAccess(book)}
                     dragging={draggingId === book.id}
@@ -1038,7 +1049,7 @@ function App() {
   );
 }
 
-function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, shared, isAdmin, dragging, onPointerDown}) {
+function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, shared, isAdmin, ownerLabel, dragging, onPointerDown}) {
   const colors = coverColors(book.title);
   const percentage = Math.min(100, Math.max(0, Number(progress?.percentage || 0)));
   return <article
@@ -1096,6 +1107,7 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
         </div>
       </div>
       <p className="book-author">{book.author}</p>
+      {ownerLabel && <p className="owner-tag" title={`Diunggah oleh ${ownerLabel}`}>Dari: {ownerLabel}</p>}
       <div className="book-meta"><span>{percentage >= 100 ? 'Selesai dibaca' : percentage > 0 ? `${Math.max(1, Math.round(percentage))}% dibaca` : 'Belum dibaca'}</span></div>
       <div className="progress-track"><span style={{width: `${percentage}%`}}/></div>
     </div>
