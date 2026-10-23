@@ -285,3 +285,8 @@ svg.marks-pane rect,
 [data-reader-theme="dark"] svg.marks-pane rect {
   fill-opacity: .65 !important;
 }
+
+
+/* Efek kertas & swipe halaman */
+.reader-paper { perspective: 1400px; }
+.epub-viewer { touch-action: pan-y; will-change: transform, opacity; }
