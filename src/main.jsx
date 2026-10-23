@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff
 } from 'lucide-react';
 import './styles.css';
 
@@ -2486,6 +2486,7 @@ function TocItem({item, onSelect, depth=0}) {
 
 function AuthScreen(props) {
   const {authMode,setAuthMode,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
+  const [showPassword, setShowPassword] = useState(false);
   return <main className="auth-page">
     <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
     <div className="auth-card">
@@ -2496,7 +2497,14 @@ function AuthScreen(props) {
       <p className="auth-subtitle">{authMode === 'login' ? 'Masuk untuk melanjutkan cerita yang terakhir Anda baca.' : 'Buat akun untuk menyimpan koleksi dan progres membaca di cloud.'}</p>
       <form onSubmit={handleAuth} className="auth-form">
         <label>Email<input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nama@email.com" required autoComplete="email"/></label>
-        <label>Kata sandi<input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/></label>
+        <label>Kata sandi
+          <span className="password-field">
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
+            <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)} title={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
+              {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+          </span>
+        </label>
         {authMessage && <div className="auth-message"><AlertCircle size={16}/>{authMessage}</div>}
         <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Baca' : 'Buat akun'}</button>
       </form>
