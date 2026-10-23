@@ -14,7 +14,7 @@ import './styles.css';
 const FONT_FAMILIES = [
   { id: 'Georgia', label: 'Georgia', family: 'Georgia, serif' },
   { id: 'Times New Roman', label: 'Times New Roman', family: '"Times New Roman", Times, serif' },
-  { id: 'Palatino', label: 'Palatino', family: 'Palatino, "Palatino Linotype", "Book Antiqua", serif' },
+  { id: 'Palatino', label: 'Palatino', family: 'Palatino, "Palatino Linotype", "Book Antiqua", "URW Palladio L", P052, "TeX Gyre Pagella", serif' },
   { id: 'Garamond', label: 'Garamond', family: 'Garamond, "EB Garamond", serif' },
   { id: 'Bookerly', label: 'Bookerly', family: 'Bookerly, "Literata", "Merriweather", Georgia, serif' },
   { id: 'Open Sans', label: 'Open Sans', family: '"Open Sans", "Segoe UI", sans-serif' },
@@ -1151,6 +1151,9 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
         '-webkit-hyphens': 'auto !important',
         'margin-bottom': '1em !important'
       },
+      'body *:not(#rb-font):not(pre):not(code):not(kbd):not(samp)': {
+        'font-family': `${fontCss} !important`
+      },
       'h1, h2, h3, h4, h5, h6': {
         'color': `${cfg.textColor} !important`,
         'font-family': `${fontCss} !important`,
@@ -1231,6 +1234,15 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
       syncSvgRectAttributes(r);
     }, 50);
   }, [onHighlightClicked, syncSvgRectAttributes]);
+
+  const attachFonts = useCallback((r) => {
+    if (!r) return;
+    r.hooks.content.register((contents) =>
+      contents.addStylesheet(
+        'https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Open+Sans:ital,wght@0,400;0,600;1,400&display=swap'
+      )
+    );
+  }, []);
 
   const attachSwipe = useCallback((r) => {
     if (!r) return;
@@ -1447,6 +1459,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
         // Register highlights
         registerHighlights(rendition, highlightsRef.current, readerTheme);
+        attachFonts(rendition);
         attachSwipe(rendition);
 
         rendition.on('selected', (cfiRange, contents) => {
@@ -1539,7 +1552,8 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
     applyReadingStyles(rendition, readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign);
     registerHighlights(rendition, highlightsRef.current, readerTheme);
-    attachSwipe(rendition);
+    attachFonts(rendition);
+        attachSwipe(rendition);
 
     rendition.on('selected', (cfiRange, contents) => {
       handleSelection(cfiRange, contents);
