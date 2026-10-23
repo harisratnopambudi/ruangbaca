@@ -968,7 +968,7 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
         </div>
       </div>
       <p className="book-author">{book.author}</p>
-      <div className="book-meta"><span>{formatSize(Number(book.file_size || 0))}</span><span>{percentage >= 100 ? 'Selesai dibaca' : percentage > 0 ? `${Math.max(1, Math.round(percentage))}% dibaca` : 'Belum dibaca'}</span></div>
+      <div className="book-meta"><span>{percentage >= 100 ? 'Selesai dibaca' : percentage > 0 ? `${Math.max(1, Math.round(percentage))}% dibaca` : 'Belum dibaca'}</span></div>
       <div className="progress-track"><span style={{width: `${percentage}%`}}/></div>
     </div>
   </article>;
