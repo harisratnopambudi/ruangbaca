@@ -329,3 +329,5 @@ body.is-dragging-card *{cursor:grabbing !important}
   .book-title-row h3{min-height:calc(2 * 1.25em);width:100%}
   .book-author{margin:3px 0 8px}
 }
+
+.book-meta{justify-content:flex-start}
