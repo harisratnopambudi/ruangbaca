@@ -353,3 +353,8 @@ body.is-dragging-card *{cursor:grabbing !important}
 .password-toggle:hover{color:var(--ink);background:var(--surface-2)}
 
 .owner-tag{margin:-6px 0 8px;font-size:10.5px;color:#0d9488;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Urutkan rak buku */
+.sort-select{height:43px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:0 34px 0 13px;font:inherit;font-size:14px;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.sort-select:focus{outline:2px solid rgba(13,148,136,.35);outline-offset:1px}
+@media(max-width:760px){.sort-select{flex:1;min-width:0;height:42px}}
