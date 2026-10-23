@@ -668,7 +668,7 @@ function App() {
   };
 
   const startCardDrag = (e, bookId) => {
-    if (query || dragRef.current) return;
+    if (query || sortMode !== 'manual' || dragRef.current) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.target.closest('.book-card-actions')) return;
     const card = e.currentTarget;
@@ -817,9 +817,26 @@ function App() {
     notify('Akses dicabut.');
   };
 
-  const filteredBooks = useMemo(() => orderedBooks.filter(book =>
-    `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
-  ), [orderedBooks, query]);
+  const [sortMode, setSortMode] = useState(() => {
+    try { return localStorage.getItem('rb_sort') || 'manual'; } catch { return 'manual'; }
+  });
+  const changeSort = (value) => {
+    setSortMode(value);
+    try { localStorage.setItem('rb_sort', value); } catch {}
+  };
+
+  const filteredBooks = useMemo(() => {
+    const list = orderedBooks.filter(book =>
+      `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
+    );
+    if (sortMode === 'manual') return list;
+    const cmp = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
+    const sorted = list.slice();
+    if (sortMode === 'title-asc') sorted.sort((a, b) => cmp(a.title, b.title));
+    else if (sortMode === 'title-desc') sorted.sort((a, b) => cmp(b.title, a.title));
+    else if (sortMode === 'author-asc') sorted.sort((a, b) => cmp(a.author, b.author) || cmp(a.title, b.title));
+    return sorted;
+  }, [orderedBooks, query, sortMode]);
 
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Baca…</span></div>;
@@ -886,6 +903,12 @@ function App() {
               <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
               <div className="shelf-tools">
                 <label className="searchbox"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
+                <select className="sort-select" value={sortMode} onChange={e => changeSort(e.target.value)} title="Urutkan buku" aria-label="Urutkan buku">
+                  <option value="manual">Urutan saya</option>
+                  <option value="title-asc">Judul A–Z</option>
+                  <option value="title-desc">Judul Z–A</option>
+                  <option value="author-asc">Penulis A–Z</option>
+                </select>
                 <button className="primary-button" onClick={onAddBookClick} disabled={uploadBusy}>
                   {uploadBusy ? <LoaderCircle size={17} className="spin"/> : <Plus size={18}/>}
                   {uploadBusy
@@ -906,7 +929,7 @@ function App() {
               </div>
              ) : (
               <>
-              {!query && filteredBooks.length > 1 && <p className="drag-hint">Tahan lalu geser sampul untuk mengatur urutan buku.</p>}
+              {!query && sortMode === 'manual' && filteredBooks.length > 1 && <p className="drag-hint">Tahan lalu geser sampul untuk mengatur urutan buku.</p>}
               <div className="book-grid">
                 {filteredBooks.map((book, index) => (
                   <BookCard
@@ -924,7 +947,7 @@ function App() {
                     isAdmin={isAdmin}
                     onAccess={() => openAccess(book)}
                     dragging={draggingId === book.id}
-                    onPointerDown={query ? undefined : (e) => startCardDrag(e, book.id)}
+                    onPointerDown={(query || sortMode !== 'manual') ? undefined : (e) => startCardDrag(e, book.id)}
                   />
                 ))}
               </div>
