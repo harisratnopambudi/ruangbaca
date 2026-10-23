@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download
+  Pencil, Bookmark, Highlighter, Download, Users
 } from 'lucide-react';
 import './styles.css';
 
@@ -746,6 +746,67 @@ function App() {
     if (isTouch) st.timer = setTimeout(begin, 350);
   };
 
+  // ---------- Admin & akses buku ----------
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [accessBook, setAccessBook] = useState(null);
+  const [accessList, setAccessList] = useState([]);
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [accessInput, setAccessInput] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    if (!supabase || !userId) { setIsAdmin(false); return; }
+    supabase.rpc('is_admin').then(({ data, error }) => {
+      if (alive) setIsAdmin(!error && data === true);
+    });
+    return () => { alive = false; };
+  }, [userId]);
+
+  const loadAccessList = async (bookId) => {
+    setAccessLoading(true);
+    const { data, error } = await supabase
+      .from('book_access')
+      .select('id,user_email,created_at')
+      .eq('book_id', bookId)
+      .order('created_at', { ascending: false });
+    setAccessLoading(false);
+    if (error) { notify(error.message || 'Gagal memuat daftar akses.', 'error'); return; }
+    setAccessList(data || []);
+  };
+
+  const openAccess = (book) => {
+    setAccessBook(book);
+    setAccessList([]);
+    setAccessInput('');
+    loadAccessList(book.id);
+  };
+
+  const grantAccess = async (e) => {
+    e.preventDefault();
+    if (!accessBook) return;
+    const emails = [...new Set(accessInput.split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean))];
+    if (!emails.length) return;
+    const bad = emails.filter(x => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+    if (bad.length) { notify(`Format email tidak valid: ${bad.join(', ')}`, 'error'); return; }
+    setAccessBusy(true);
+    const rows = emails.map(email => ({ book_id: accessBook.id, user_email: email, granted_by: userId }));
+    const { error } = await supabase.from('book_access').upsert(rows, { onConflict: 'book_id,user_email', ignoreDuplicates: true });
+    setAccessBusy(false);
+    if (error) { notify(error.message || 'Gagal memberi akses.', 'error'); return; }
+    setAccessInput('');
+    notify(`Akses diberikan ke ${emails.length} email.`);
+    loadAccessList(accessBook.id);
+  };
+
+  const revokeAccess = async (row) => {
+    if (!window.confirm(`Cabut akses ${row.user_email}?`)) return;
+    const { error } = await supabase.from('book_access').delete().eq('id', row.id);
+    if (error) { notify(error.message || 'Gagal mencabut akses.', 'error'); return; }
+    setAccessList(list => list.filter(x => x.id !== row.id));
+    notify('Akses dicabut.');
+  };
+
   const filteredBooks = useMemo(() => orderedBooks.filter(book =>
     `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
   ), [orderedBooks, query]);
@@ -848,6 +909,9 @@ function App() {
                     onEdit={(e) => startEditBook(book, e)}
                     onDelete={() => deleteBook(book)}
                     onDownload={() => downloadEpub(book, notify)}
+                    shared={book.user_id !== userId}
+                    isAdmin={isAdmin}
+                    onAccess={() => openAccess(book)}
                     dragging={draggingId === book.id}
                     onPointerDown={query ? undefined : (e) => startCardDrag(e, book.id)}
                   />
@@ -921,12 +985,60 @@ function App() {
         </div>
       )}
 
+      {accessBook && (
+        <div className="modal-backdrop" onClick={() => !accessBusy && setAccessBook(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">
+                <Users size={18} className="modal-icon-teal" />
+                <span>Kelola Akses Buku</span>
+              </div>
+              <button className="modal-close-btn" onClick={() => setAccessBook(null)} disabled={accessBusy} title="Tutup">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="access-book-title">{accessBook.title}</p>
+            <form onSubmit={grantAccess} className="modal-form">
+              <label>
+                Email pembeli (boleh lebih dari satu, pisahkan dengan koma)
+                <input
+                  type="text"
+                  value={accessInput}
+                  onChange={e => setAccessInput(e.target.value)}
+                  placeholder="nama@email.com, lainnya@email.com"
+                  autoFocus
+                />
+              </label>
+              <button type="submit" className="primary-button" disabled={accessBusy || !accessInput.trim()}>
+                {accessBusy ? <LoaderCircle size={16} className="spin" /> : null}
+                {accessBusy ? 'Memberi akses…' : 'Beri Akses'}
+              </button>
+            </form>
+            <div className="access-list">
+              <div className="access-list-head">Pemilik akses ({accessList.length})</div>
+              {accessLoading ? (
+                <div className="access-empty"><LoaderCircle size={15} className="spin" /> Memuat…</div>
+              ) : accessList.length === 0 ? (
+                <div className="access-empty">Belum ada email yang diberi akses.</div>
+              ) : accessList.map(row => (
+                <div className="access-row" key={row.id}>
+                  <span title={row.user_email}>{row.user_email}</span>
+                  <button className="delete-button" title="Cabut akses" onClick={() => revokeAccess(row)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {notice && <div className={`toast ${notice.kind}`}><span>{notice.kind === 'error' ? <AlertCircle size={17}/> : <CheckCircle2 size={17}/>}</span>{notice.message}<button onClick={() => setNotice(null)}><X size={15}/></button></div>}
     </div>
   );
 }
 
-function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, dragging, onPointerDown}) {
+function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, shared, isAdmin, dragging, onPointerDown}) {
   const colors = coverColors(book.title);
   const percentage = Math.min(100, Math.max(0, Number(progress?.percentage || 0)));
   return <article
@@ -956,15 +1068,26 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
       <div className="book-title-row">
         <h3 title={book.title}>{book.title}</h3>
         <div className="book-card-actions">
-          <button className="edit-button" title="Ubah judul atau penulis" onClick={onEdit}>
-            <Pencil size={13}/>
-          </button>
-          <button className="download-button" title="Unduh file EPUB" onClick={onDownload}>
-            <Download size={14}/>
-          </button>
-          <button className="delete-button" title="Hapus buku" onClick={onDelete}>
-            <Trash2 size={15}/>
-          </button>
+          {shared ? (
+            <span className="shared-badge" title="Buku ini dibagikan oleh admin">Dibagikan</span>
+          ) : (
+            <>
+              {isAdmin && (
+                <button className="access-button" title="Kelola akses pembaca" onClick={onAccess}>
+                  <Users size={14}/>
+                </button>
+              )}
+              <button className="edit-button" title="Ubah judul atau penulis" onClick={onEdit}>
+                <Pencil size={13}/>
+              </button>
+              <button className="download-button" title="Unduh file EPUB" onClick={onDownload}>
+                <Download size={14}/>
+              </button>
+              <button className="delete-button" title="Hapus buku" onClick={onDelete}>
+                <Trash2 size={15}/>
+              </button>
+            </>
+          )}
         </div>
       </div>
       <p className="book-author">{book.author}</p>
@@ -1830,13 +1953,15 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
         </button>
 
         {/* Download EPUB */}
-        <button
-          className="icon-button"
-          title="Unduh file EPUB"
-          onClick={() => downloadEpub({ ...book, title: book.title || bookTitle }, notify)}
-        >
-          <Download size={17}/>
-        </button>
+        {book.user_id === userId && (
+          <button
+            className="icon-button"
+            title="Unduh file EPUB"
+            onClick={() => downloadEpub({ ...book, title: book.title || bookTitle }, notify)}
+          >
+            <Download size={17}/>
+          </button>
+        )}
 
         {/* Save Progress */}
         <button className="icon-button" title="Simpan progres sekarang" onClick={saveNow}>
