@@ -351,3 +351,5 @@ body.is-dragging-card *{cursor:grabbing !important}
 .password-field input{width:100%;padding-right:48px}
 .password-toggle{position:absolute;top:50%;right:10px;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);width:34px;height:34px;border-radius:8px;display:grid;place-items:center;cursor:pointer;transition:color .15s,background .15s}
 .password-toggle:hover{color:var(--ink);background:var(--surface-2)}
+
+.owner-tag{margin:-6px 0 8px;font-size:10.5px;color:#0d9488;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
