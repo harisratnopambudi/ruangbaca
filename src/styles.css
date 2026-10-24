@@ -464,3 +464,14 @@ body.is-dragging-card *{cursor:grabbing !important}
   .catalog-admin button{font-size:11px;padding:4px 7px}
   .order-bar{bottom:8px;padding:10px 12px;gap:8px}
 }
+
+/* Aturan harga paket */
+.price-chips{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+.price-chip{flex:1 1 150px;display:flex;flex-direction:column;gap:2px;padding:11px 14px;border-radius:14px;background:linear-gradient(135deg,rgba(13,148,136,.14),rgba(13,148,136,.04));border:1px solid rgba(13,148,136,.32)}
+.price-chip span{font-size:12px;color:var(--muted);font-weight:600}
+.price-chip b{font-size:17px;color:#0d9488}
+.price-chip::before{content:'✨';font-size:13px;margin-bottom:2px}
+.order-hint{color:var(--muted);font-size:11.5px;margin-top:2px}
+.checkout-row.part{background:var(--surface-2);font-size:13px}
+.checkout-row.part span{white-space:normal}
+@media (orientation: portrait) and (max-width: 900px){.price-chip{flex:1 1 30%;padding:9px 10px}.price-chip b{font-size:14px}.price-chip span{font-size:11px}}
