@@ -382,7 +382,11 @@ function App() {
     setAuthBusy(true); setAuthMessage('');
     try {
       if (authMode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
+        });
         if (error) throw error;
         setAuthMessage(data.session ? 'Akun berhasil dibuat. Anda sudah masuk.' : 'Akun dibuat. Periksa email untuk konfirmasi, lalu masuk.');
         if (data.session) setSession(data.session);
