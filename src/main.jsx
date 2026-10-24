@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check
 } from 'lucide-react';
 import './styles.css';
 
@@ -859,6 +859,60 @@ function App() {
     notify('Akses dicabut.');
   };
 
+  // ---------- Katalog & pemesanan ----------
+  const [tab, setTab] = useState('shelf');
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [catalogSelected, setCatalogSelected] = useState([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [catalogEditor, setCatalogEditor] = useState(null);
+
+  const loadCatalog = async () => {
+    if (!supabase) return;
+    setCatalogLoading(true);
+    const { data, error } = await supabase.from('catalog_items').select('*').order('created_at', { ascending: false });
+    setCatalogLoading(false);
+    if (error) { setCatalogError(error.message || 'gagal memuat'); return; }
+    setCatalogError('');
+    setCatalogItems(data || []);
+    setCatalogSelected(sel => sel.filter(id => (data || []).some(i => i.id === id)));
+  };
+
+  useEffect(() => {
+    if (userId && tab === 'catalog') loadCatalog();
+  }, [userId, tab]);
+
+  const toggleCatalogSelect = id =>
+    setCatalogSelected(sel => sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id]);
+
+  const saveCatalogItem = async ({ book, item, price, description }) => {
+    const thumb = covers[book.id] ? await makeThumb(covers[book.id]) : null;
+    const payload = {
+      book_id: book.id,
+      title: book.title,
+      author: book.author || null,
+      price,
+      description: description || null,
+      cover_data: thumb || item?.cover_data || null,
+      is_active: true,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from('catalog_items').upsert(payload, { onConflict: 'book_id' });
+    if (error) { notify(error.message || 'Gagal menyimpan katalog.', 'error'); return; }
+    setCatalogEditor(null);
+    notify('Katalog diperbarui.');
+    loadCatalog();
+  };
+
+  const removeCatalogItem = async item => {
+    if (!window.confirm(`Hapus "${item.title}" dari katalog?`)) return;
+    const { error } = await supabase.from('catalog_items').delete().eq('id', item.id);
+    if (error) { notify(error.message || 'Gagal menghapus dari katalog.', 'error'); return; }
+    setCatalogItems(list => list.filter(i => i.id !== item.id));
+    notify('Dihapus dari katalog.');
+  };
+
   const [sortMode, setSortMode] = useState(() => {
     try { return localStorage.getItem('rb_sort') || 'manual'; } catch { return 'manual'; }
   });
@@ -962,6 +1016,12 @@ function App() {
             </div>
           </section>
 
+          <div className="tabs-bar" role="tablist">
+            <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
+            <button role="tab" aria-selected={tab === 'catalog'} className={tab === 'catalog' ? 'active' : ''} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
+          </div>
+
+          {tab === 'shelf' && (
           <section className="shelf-section">
             <div className="section-heading">
               <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
@@ -1037,7 +1097,47 @@ function App() {
              )}
             <div className="privacy-note"><span className="privacy-dot"></span> Koleksi ini privat untuk akun Anda. Masuk dengan akun yang sama untuk mengaksesnya di perangkat lain.</div>
           </section>
+          )}
+
+          {tab === 'catalog' && (
+            <CatalogSection
+              items={catalogItems}
+              loading={catalogLoading}
+              error={catalogError}
+              ownedIds={new Set(books.map(b => b.id))}
+              selected={catalogSelected}
+              onToggle={toggleCatalogSelect}
+              isAdmin={isAdmin}
+              onAdd={() => setCatalogEditor({ editing: null })}
+              onEdit={item => setCatalogEditor({ editing: item })}
+              onRemove={removeCatalogItem}
+              onCheckout={() => setCheckoutOpen(true)}
+              onClear={() => setCatalogSelected([])}
+            />
+          )}
         </main>
+      )}
+
+      {catalogEditor && (
+        <CatalogEditorModal
+          books={books.filter(b => b.user_id === userId)}
+          existingIds={new Set(catalogItems.map(i => i.book_id))}
+          editing={catalogEditor.editing}
+          onSave={saveCatalogItem}
+          onClose={() => setCatalogEditor(null)}
+        />
+      )}
+
+      {checkoutOpen && (
+        <CheckoutModal
+          items={catalogItems.filter(i => catalogSelected.includes(i.id) && !books.some(b => b.id === i.book_id))}
+          email={session?.user?.email || ''}
+          onClose={() => setCheckoutOpen(false)}
+          onConfirmed={() => {
+            setCheckoutOpen(false);
+            notify('Lanjutkan di WhatsApp. Admin akan membuka kunci buku setelah pembayaran dicek.');
+          }}
+        />
       )}
 
       {editingBook && (
@@ -2696,6 +2796,214 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
       </form>
     </div>
   </main>;
+}
+
+const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
+
+const normalizeWa = raw => {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('0')) d = `62${d.slice(1)}`;
+  return d;
+};
+
+// Perkecil sampul menjadi thumbnail JPEG kecil untuk katalog
+const makeThumb = (src, width = 260) => new Promise(resolve => {
+  if (!src) { resolve(null); return; }
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const w = Math.min(width, img.naturalWidth || width);
+      const h = Math.round(w * ((img.naturalHeight || w * 1.5) / (img.naturalWidth || w)));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.75));
+    } catch { resolve(null); }
+  };
+  img.onerror = () => resolve(null);
+  img.src = src;
+});
+
+function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, isAdmin, onAdd, onEdit, onRemove, onCheckout, onClear }) {
+  const [q, setQ] = useState('');
+  const list = items.filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()));
+  const chosen = items.filter(i => selected.includes(i.id) && !ownedIds.has(i.book_id));
+  const total = chosen.reduce((a, b) => a + Number(b.price || 0), 0);
+
+  return <section className="shelf-section catalog-section">
+    <div className="section-heading">
+      <div><div className="eyebrow muted">KATALOG BUKU</div><h2>Katalog <span className="count">{items.length}</span></h2></div>
+      <div className="shelf-tools">
+        <label className="searchbox"><Search size={17}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
+        {isAdmin && <button className="primary-button" onClick={onAdd}><Plus size={18}/> Tambah ke katalog</button>}
+      </div>
+    </div>
+
+    {error ? (
+      <div className="info-banner">Katalog belum siap: {error}. Jalankan SQL <b>catalog.sql</b> di Supabase.</div>
+    ) : loading && !items.length ? (
+      <div className="catalog-empty"><LoaderCircle size={22} className="spin"/> Memuat katalog…</div>
+    ) : list.length === 0 ? (
+      <div className="catalog-empty">
+        <ShoppingBag size={34}/>
+        <h3>{q ? 'Buku tidak ditemukan' : 'Katalog masih kosong'}</h3>
+        <p>{q ? 'Coba kata kunci yang berbeda.' : isAdmin ? 'Tambahkan buku dari rak Anda ke katalog agar bisa dipesan.' : 'Buku yang tersedia untuk dibeli akan muncul di sini.'}</p>
+      </div>
+    ) : (
+      <>
+        {!isAdmin && <p className="drag-hint">Centang buku yang ingin dipesan. Buku terkunci sampai pembayaran dikonfirmasi admin.</p>}
+        <div className="catalog-grid">
+          {list.map(item => {
+            const owned = !isAdmin && ownedIds.has(item.book_id);
+            const isSel = selected.includes(item.id);
+            return <article key={item.id} className={`catalog-card${isSel ? ' selected' : ''}${owned ? ' owned' : ''}`}>
+              <div className="catalog-cover" onClick={() => !isAdmin && !owned && onToggle(item.id)}>
+                {item.cover_data
+                  ? <img src={item.cover_data} alt={item.title} draggable="false"/>
+                  : <div className="catalog-cover-fallback"><span>{item.title}</span><small>{item.author}</small></div>}
+                {!isAdmin && !owned && (
+                  <button type="button" role="checkbox" aria-checked={isSel} aria-label={`Pilih ${item.title}`}
+                    className={`catalog-check${isSel ? ' on' : ''}`}
+                    onClick={e => { e.stopPropagation(); onToggle(item.id); }}>
+                    {isSel && <Check size={15}/>}
+                  </button>
+                )}
+                <span className={`catalog-status ${owned ? 'open' : 'locked'}`}>
+                  {owned ? <><Check size={12}/> Dimiliki</> : <><Lock size={12}/> Terkunci</>}
+                </span>
+              </div>
+              <div className="catalog-info">
+                <h3 title={item.title}>{item.title}</h3>
+                <p className="catalog-author">{item.author}</p>
+                {item.description && <p className="catalog-desc">{item.description}</p>}
+                <div className="catalog-price">{owned ? 'Sudah ada di rak Anda' : formatRupiah(item.price)}</div>
+                {isAdmin && (
+                  <div className="catalog-admin">
+                    <button onClick={() => onEdit(item)} title="Ubah harga atau deskripsi"><Pencil size={13}/> Ubah</button>
+                    <button onClick={() => onRemove(item)} title="Hapus dari katalog"><Trash2 size={13}/> Hapus</button>
+                  </div>
+                )}
+              </div>
+            </article>;
+          })}
+        </div>
+      </>
+    )}
+
+    {!isAdmin && chosen.length > 0 && (
+      <div className="order-bar">
+        <div className="order-bar-info">
+          <strong>{chosen.length} buku dipilih</strong>
+          <span>Total {formatRupiah(total)}</span>
+        </div>
+        <button className="order-clear" onClick={onClear}>Bersihkan</button>
+        <button className="primary-button" onClick={onCheckout}><ShoppingBag size={17}/> Pesan &amp; Bayar</button>
+      </div>
+    )}
+  </section>;
+}
+
+function CheckoutModal({ items, email, onClose, onConfirmed }) {
+  const [code] = useState(() => `RB-${Date.now().toString(36).toUpperCase()}`);
+  const [qrisOk, setQrisOk] = useState(true);
+  const total = items.reduce((a, b) => a + Number(b.price || 0), 0);
+  const wa = normalizeWa(import.meta.env.VITE_ADMIN_WHATSAPP);
+  const lines = items.map((it, i) => `${i + 1}. ${it.title} - ${formatRupiah(it.price)}`).join('\n');
+  const text = `Halo Admin Ruang Baca, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
+  const link = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(text)}` : null;
+  const qrisSrc = `${import.meta.env.BASE_URL}qris.png`;
+
+  return <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-card checkout-card" onClick={e => e.stopPropagation()}>
+      <div className="modal-header">
+        <div className="modal-title"><ShoppingBag size={18} className="modal-icon-teal"/><span>Pembayaran</span></div>
+        <button className="modal-close-btn" onClick={onClose} title="Tutup"><X size={18}/></button>
+      </div>
+
+      <div className="checkout-code">Kode pesanan <b>{code}</b></div>
+      <div className="checkout-items">
+        {items.map(it => (
+          <div className="checkout-row" key={it.id}><span title={it.title}>{it.title}</span><b>{formatRupiah(it.price)}</b></div>
+        ))}
+        <div className="checkout-row total"><span>Total bayar</span><b>{formatRupiah(total)}</b></div>
+      </div>
+
+      <div className="qris-box">
+        {qrisOk
+          ? <img src={qrisSrc} alt="QRIS pembayaran" onError={() => setQrisOk(false)}/>
+          : <div className="qris-missing">Gambar QRIS belum dipasang. Hubungi admin lewat WhatsApp untuk mendapatkan kode pembayaran.</div>}
+        <div className="qris-caption">Scan dengan aplikasi e-wallet atau mobile banking</div>
+      </div>
+
+      <ol className="checkout-steps">
+        <li>Scan QRIS di atas dan bayar sesuai <b>total</b>.</li>
+        <li>Setelah berhasil, tekan tombol konfirmasi WhatsApp di bawah dan kirim bukti bayar.</li>
+        <li>Admin akan memeriksa dan membuka kunci buku di akun <b>{email}</b>.</li>
+      </ol>
+
+      {link
+        ? <a className="primary-button wa-button" href={link} target="_blank" rel="noopener noreferrer" onClick={onConfirmed}>
+            <MessageCircle size={18}/> Saya sudah bayar — Konfirmasi via WhatsApp
+          </a>
+        : <div className="info-banner">Nomor WhatsApp admin belum diatur (VITE_ADMIN_WHATSAPP).</div>}
+    </div>
+  </div>;
+}
+
+function CatalogEditorModal({ books, existingIds, editing, onSave, onClose }) {
+  const [picked, setPicked] = useState(null);
+  const [q, setQ] = useState('');
+  const [price, setPrice] = useState(editing ? String(editing.price ?? 0) : '');
+  const [desc, setDesc] = useState(editing?.description || '');
+  const [busy, setBusy] = useState(false);
+  const target = editing ? (books.find(b => b.id === editing.book_id) || { id: editing.book_id, title: editing.title, author: editing.author }) : picked;
+  const candidates = books.filter(b => !existingIds.has(b.id) && `${b.title} ${b.author}`.toLowerCase().includes(q.toLowerCase()));
+
+  const submit = async e => {
+    e.preventDefault();
+    if (!target) return;
+    setBusy(true);
+    await onSave({ book: target, item: editing, price: Math.max(0, parseInt(price || '0', 10) || 0), description: desc.trim() });
+    setBusy(false);
+  };
+
+  return <div className="modal-backdrop" onClick={() => !busy && onClose()}>
+    <div className="modal-card" onClick={e => e.stopPropagation()}>
+      <div className="modal-header">
+        <div className="modal-title"><ShoppingBag size={18} className="modal-icon-teal"/><span>{editing ? 'Ubah Item Katalog' : 'Tambah ke Katalog'}</span></div>
+        <button className="modal-close-btn" onClick={onClose} disabled={busy} title="Tutup"><X size={18}/></button>
+      </div>
+
+      {!target ? (
+        <div>
+          <label className="searchbox picker-search"><Search size={16}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Cari buku di rak Anda…" autoFocus/></label>
+          <div className="access-list picker-list">
+            {candidates.length === 0
+              ? <div className="access-empty">Tidak ada buku yang bisa ditambahkan.</div>
+              : candidates.map(b => (
+                <button key={b.id} className="picker-row" onClick={() => setPicked(b)}>
+                  <span>{b.title}</span><small>{b.author}</small>
+                </button>
+              ))}
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="modal-form">
+          <p className="access-book-title">{target.title}</p>
+          <label>Harga (Rupiah)
+            <input type="number" min="0" step="500" inputMode="numeric" value={price} onChange={e => setPrice(e.target.value)} placeholder="contoh: 35000" required autoFocus/>
+          </label>
+          <label>Deskripsi singkat (opsional)
+            <input type="text" maxLength={160} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Sinopsis satu kalimat"/>
+          </label>
+          <button type="submit" className="primary-button" disabled={busy}>
+            {busy ? <LoaderCircle size={16} className="spin"/> : null}{busy ? 'Menyimpan…' : 'Simpan ke katalog'}
+          </button>
+        </form>
+      )}
+    </div>
+  </div>;
 }
 
 function SetupMissing() {
