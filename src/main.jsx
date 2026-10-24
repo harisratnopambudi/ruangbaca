@@ -859,24 +859,27 @@ function App() {
     notify('Akses dicabut.');
   };
 
-  // ---------- Katalog & pemesanan ----------
+  // ---------- Katalog otomatis & pemesanan ----------
   const [tab, setTab] = useState('shelf');
   const [catalogItems, setCatalogItems] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState('');
   const [catalogSelected, setCatalogSelected] = useState([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [catalogEditor, setCatalogEditor] = useState(null);
 
+  // Katalog = semua buku milik admin (kecuali buku contoh), diambil lewat fungsi server get_catalog()
   const loadCatalog = async () => {
     if (!supabase) return;
     setCatalogLoading(true);
-    const { data, error } = await supabase.from('catalog_items').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.rpc('get_catalog');
     setCatalogLoading(false);
     if (error) { setCatalogError(error.message || 'gagal memuat'); return; }
+    const items = (data || []).map(r => ({
+      id: r.book_id, book_id: r.book_id, title: r.title, author: r.author, cover_data: r.cover_thumb
+    }));
     setCatalogError('');
-    setCatalogItems(data || []);
-    setCatalogSelected(sel => sel.filter(id => (data || []).some(i => i.id === id)));
+    setCatalogItems(items);
+    setCatalogSelected(sel => sel.filter(id => items.some(i => i.id === id)));
   };
 
   useEffect(() => {
@@ -886,32 +889,22 @@ function App() {
   const toggleCatalogSelect = id =>
     setCatalogSelected(sel => sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id]);
 
-  const saveCatalogItem = async ({ book, item, description }) => {
-    const thumb = covers[book.id] ? await makeThumb(covers[book.id]) : null;
-    const payload = {
-      book_id: book.id,
-      title: book.title,
-      author: book.author || null,
-      price: PACKAGES[0].price,
-      description: description || null,
-      cover_data: thumb || item?.cover_data || null,
-      is_active: true,
-      updated_at: new Date().toISOString()
-    };
-    const { error } = await supabase.from('catalog_items').upsert(payload, { onConflict: 'book_id' });
-    if (error) { notify(error.message || 'Gagal menyimpan katalog.', 'error'); return; }
-    setCatalogEditor(null);
-    notify('Katalog diperbarui.');
-    loadCatalog();
-  };
-
-  const removeCatalogItem = async item => {
-    if (!window.confirm(`Hapus "${item.title}" dari katalog?`)) return;
-    const { error } = await supabase.from('catalog_items').delete().eq('id', item.id);
-    if (error) { notify(error.message || 'Gagal menghapus dari katalog.', 'error'); return; }
-    setCatalogItems(list => list.filter(i => i.id !== item.id));
-    notify('Dihapus dari katalog.');
-  };
+  // Admin: thumbnail sampul disimpan otomatis ke tiap buku agar tampil di katalog pengguna lain
+  const thumbTried = useRef(new Set());
+  useEffect(() => {
+    if (!isAdmin || !userId) return;
+    const todo = books.filter(b => b.user_id === userId && !b.cover_thumb && covers[b.id] && !thumbTried.current.has(b.id));
+    if (!todo.length) return;
+    (async () => {
+      for (const b of todo) {
+        thumbTried.current.add(b.id);
+        const thumb = await makeThumb(covers[b.id]);
+        if (!thumb) continue;
+        const { error } = await supabase.from('books').update({ cover_thumb: thumb }).eq('id', b.id);
+        if (!error) setBooks(list => list.map(x => x.id === b.id ? { ...x, cover_thumb: thumb } : x));
+      }
+    })();
+  }, [isAdmin, userId, books, covers]);
 
   const [sortMode, setSortMode] = useState(() => {
     try { return localStorage.getItem('rb_sort') || 'manual'; } catch { return 'manual'; }
@@ -1108,24 +1101,11 @@ function App() {
               selected={catalogSelected}
               onToggle={toggleCatalogSelect}
               isAdmin={isAdmin}
-              onAdd={() => setCatalogEditor({ editing: null })}
-              onEdit={item => setCatalogEditor({ editing: item })}
-              onRemove={removeCatalogItem}
               onCheckout={() => setCheckoutOpen(true)}
               onClear={() => setCatalogSelected([])}
             />
           )}
         </main>
-      )}
-
-      {catalogEditor && (
-        <CatalogEditorModal
-          books={books.filter(b => b.user_id === userId)}
-          existingIds={new Set(catalogItems.map(i => i.book_id))}
-          editing={catalogEditor.editing}
-          onSave={saveCatalogItem}
-          onClose={() => setCatalogEditor(null)}
-        />
       )}
 
       {checkoutOpen && (
@@ -2860,7 +2840,7 @@ const makeThumb = (src, width = 260) => new Promise(resolve => {
   img.src = src;
 });
 
-function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, isAdmin, onAdd, onEdit, onRemove, onCheckout, onClear }) {
+function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, isAdmin, onCheckout, onClear }) {
   const [q, setQ] = useState('');
   const list = items.filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()));
   const chosen = items.filter(i => selected.includes(i.id) && !ownedIds.has(i.book_id));
@@ -2872,7 +2852,6 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
       <div><div className="eyebrow muted">KATALOG BUKU</div><h2>Katalog <span className="count">{items.length}</span></h2></div>
       <div className="shelf-tools">
         <label className="searchbox"><Search size={17}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
-        {isAdmin && <button className="primary-button" onClick={onAdd}><Plus size={18}/> Tambah ke katalog</button>}
       </div>
     </div>
 
@@ -2891,12 +2870,14 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
     ) : list.length === 0 ? (
       <div className="catalog-empty">
         <ShoppingBag size={34}/>
-        <h3>{q ? 'Buku tidak ditemukan' : 'Katalog masih kosong'}</h3>
-        <p>{q ? 'Coba kata kunci yang berbeda.' : isAdmin ? 'Tambahkan buku dari rak Anda ke katalog agar bisa dipesan.' : 'Buku yang tersedia untuk dibeli akan muncul di sini.'}</p>
+        <h3>{q ? 'Buku tidak ditemukan' : 'Belum ada buku di katalog'}</h3>
+        <p>{q ? 'Coba kata kunci yang berbeda.' : 'Buku yang tersedia akan muncul di sini secara otomatis.'}</p>
       </div>
     ) : (
       <>
-        {!isAdmin && <p className="drag-hint">Centang buku yang ingin dipesan. Buku terkunci sampai pembayaran dikonfirmasi admin.</p>}
+        {isAdmin
+          ? <p className="drag-hint">Katalog terisi otomatis dari semua buku di rak Anda (kecuali buku contoh). Pengguna lain melihatnya di tab ini.</p>
+          : <p className="drag-hint">Centang buku yang ingin dipesan. Buku terkunci sampai pembayaran dikonfirmasi admin.</p>}
         <div className="catalog-grid">
           {list.map(item => {
             const owned = !isAdmin && ownedIds.has(item.book_id);
@@ -2913,21 +2894,17 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
                     {isSel && <Check size={15}/>}
                   </button>
                 )}
-                <span className={`catalog-status ${owned ? 'open' : 'locked'}`}>
-                  {owned ? <><Check size={12}/> Dimiliki</> : <><Lock size={12}/> Terkunci</>}
-                </span>
+                {!isAdmin && (
+                  <span className={`catalog-status ${owned ? 'open' : 'locked'}`}>
+                    {owned ? <><Check size={12}/> Dimiliki</> : <><Lock size={12}/> Terkunci</>}
+                  </span>
+                )}
               </div>
               <div className="catalog-info">
                 <h3 title={item.title}>{item.title}</h3>
                 <p className="catalog-author">{item.author}</p>
                 {item.description && <p className="catalog-desc">{item.description}</p>}
                 <div className="catalog-price">{owned ? 'Sudah ada di rak Anda' : `${formatRupiah(PACKAGES[0].price)} / ebook`}</div>
-                {isAdmin && (
-                  <div className="catalog-admin">
-                    <button onClick={() => onEdit(item)} title="Ubah deskripsi"><Pencil size={13}/> Ubah</button>
-                    <button onClick={() => onRemove(item)} title="Hapus dari katalog"><Trash2 size={13}/> Hapus</button>
-                  </div>
-                )}
               </div>
             </article>;
           })}
@@ -2997,58 +2974,6 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
             <MessageCircle size={18}/> Saya sudah bayar — Konfirmasi via WhatsApp
           </a>
         : <div className="info-banner">Nomor WhatsApp admin belum diatur (VITE_ADMIN_WHATSAPP).</div>}
-    </div>
-  </div>;
-}
-
-function CatalogEditorModal({ books, existingIds, editing, onSave, onClose }) {
-  const [picked, setPicked] = useState(null);
-  const [q, setQ] = useState('');
-  const [desc, setDesc] = useState(editing?.description || '');
-  const [busy, setBusy] = useState(false);
-  const target = editing ? (books.find(b => b.id === editing.book_id) || { id: editing.book_id, title: editing.title, author: editing.author }) : picked;
-  const candidates = books.filter(b => !existingIds.has(b.id) && `${b.title} ${b.author}`.toLowerCase().includes(q.toLowerCase()));
-
-  const submit = async e => {
-    e.preventDefault();
-    if (!target) return;
-    setBusy(true);
-    await onSave({ book: target, item: editing, description: desc.trim() });
-    setBusy(false);
-  };
-
-  return <div className="modal-backdrop" onClick={() => !busy && onClose()}>
-    <div className="modal-card" onClick={e => e.stopPropagation()}>
-      <div className="modal-header">
-        <div className="modal-title"><ShoppingBag size={18} className="modal-icon-teal"/><span>{editing ? 'Ubah Item Katalog' : 'Tambah ke Katalog'}</span></div>
-        <button className="modal-close-btn" onClick={onClose} disabled={busy} title="Tutup"><X size={18}/></button>
-      </div>
-
-      {!target ? (
-        <div>
-          <label className="searchbox picker-search"><Search size={16}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Cari buku di rak Anda…" autoFocus/></label>
-          <div className="access-list picker-list">
-            {candidates.length === 0
-              ? <div className="access-empty">Tidak ada buku yang bisa ditambahkan.</div>
-              : candidates.map(b => (
-                <button key={b.id} className="picker-row" onClick={() => setPicked(b)}>
-                  <span>{b.title}</span><small>{b.author}</small>
-                </button>
-              ))}
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="modal-form">
-          <p className="access-book-title">{target.title}</p>
-          <p className="access-book-title" style={{whiteSpace:'normal'}}>Harga mengikuti aturan paket: {PACKAGES.map(pk => `${pk.label} ${formatRupiah(pk.price)}`).join(' · ')}</p>
-          <label>Deskripsi singkat (opsional)
-            <input type="text" maxLength={160} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Sinopsis satu kalimat" autoFocus/>
-          </label>
-          <button type="submit" className="primary-button" disabled={busy}>
-            {busy ? <LoaderCircle size={16} className="spin"/> : null}{busy ? 'Menyimpan…' : 'Simpan ke katalog'}
-          </button>
-        </form>
-      )}
     </div>
   </div>;
 }
