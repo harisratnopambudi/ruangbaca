@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList, Star
 } from 'lucide-react';
 import './styles.css';
 
@@ -1122,10 +1122,11 @@ function App() {
             </div>
             <div className="hero-art" aria-hidden="true">
               <div className="art-sun"></div>
-              {bestsellers[0]?.sold > 0 && <div className="art-label"><span>BEST</span><span>SELLER</span></div>}
-              {[['book-one', bestsellers[1]], ['book-two', bestsellers[0]], ['book-three', bestsellers[2]]].map(([cls, b]) => (
+              {bestsellers[0]?.sold > 0 && <div className="art-label"><Star size={28} fill="currentColor" strokeWidth={1.5}/><span>BEST SELLER</span><Star size={28} fill="currentColor" strokeWidth={1.5}/></div>}
+              {[['book-one', bestsellers[1], 2], ['book-two', bestsellers[0], 1], ['book-three', bestsellers[2], 3]].map(([cls, b, rank]) => (
                 <div key={cls} className={`art-book ${cls}${b?.cover_thumb ? ' has-cover' : ''}`}>
                   {b?.cover_thumb && <img src={b.cover_thumb} alt="" draggable="false"/>}
+                  {b?.cover_thumb && b.sold > 0 && <span className="art-rank">{rank}</span>}
                 </div>
               ))}
               <div className="art-line"></div>
