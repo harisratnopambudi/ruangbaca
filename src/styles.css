@@ -362,3 +362,9 @@ body.is-dragging-card *{cursor:grabbing !important}
 /* Baris pengunggah (admin): tinggi tetap supaya semua kartu sejajar */
 .owner-tag{height:16px;line-height:16px;margin:-2px 0 6px}
 .owner-tag.mine{color:var(--muted)}
+
+/* Toggle keterangan pengunggah (admin) */
+.owner-toggle{height:43px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:12px;padding:0 13px;font:inherit;font-size:14px;cursor:pointer;transition:all .15s}
+.owner-toggle.on{color:#0d9488;border-color:rgba(13,148,136,.45);background:rgba(13,148,136,.08)}
+.owner-toggle:hover{color:var(--ink)}
+@media(max-width:760px){.owner-toggle{height:42px}.owner-toggle span{display:none}}
