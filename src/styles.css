@@ -506,3 +506,8 @@ body.is-dragging-card *{cursor:grabbing !important}
 /* Banner: ilustrasi buku memakai cover buku terlaris */
 .art-book.has-cover{background:var(--surface-2);overflow:hidden;border-left:0}
 .art-book.has-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+
+/* Tulisan BEST SELLER di belakang tiga buku */
+.art-label{position:absolute;right:12%;top:46px;display:flex;flex-direction:column;align-items:flex-end;font-family:'Playfair Display',serif;font-weight:600;font-size:clamp(40px,4.6vw,62px);line-height:.92;letter-spacing:.02em;color:#527865;opacity:.3;pointer-events:none;user-select:none}
+.art-label span:last-child{letter-spacing:.06em}
+@media(max-width:760px){.art-label{font-size:40px;right:30%}}
