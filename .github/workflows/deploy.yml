@@ -28,6 +28,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_ADMIN_WHATSAPP: ${{ vars.VITE_ADMIN_WHATSAPP }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
