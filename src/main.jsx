@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift
 } from 'lucide-react';
 import './styles.css';
 
@@ -766,7 +766,7 @@ function App() {
   const [accessLoading, setAccessLoading] = useState(false);
   const [accessBusy, setAccessBusy] = useState(false);
   const [accessInput, setAccessInput] = useState('');
-  const canUpload = isAdmin || books.some(b => b.user_id !== userId);
+  const canUpload = isAdmin || books.some(b => b.user_id !== userId && !b.is_sample);
 
   useEffect(() => {
     let alive = true;
@@ -836,6 +836,14 @@ function App() {
   const changeSort = (value) => {
     setSortMode(value);
     try { localStorage.setItem('rb_sort', value); } catch {}
+  };
+
+  const toggleSample = async (book) => {
+    const next = !book.is_sample;
+    const { error } = await supabase.from('books').update({ is_sample: next }).eq('id', book.id);
+    if (error) { notify(error.message || 'Gagal mengubah status buku contoh.', 'error'); return; }
+    setBooks(list => list.map(b => b.id === book.id ? { ...b, is_sample: next } : b));
+    notify(next ? 'Buku dijadikan contoh untuk semua pengguna.' : 'Buku tidak lagi menjadi contoh.');
   };
 
   const filteredBooks = useMemo(() => {
@@ -954,6 +962,9 @@ function App() {
               </div>
              ) : (
               <>
+              {!isAdmin && !canUpload && books.length > 0 && (
+                <p className="info-banner">Kamu baru memiliki buku contoh. Hubungi admin untuk mendapatkan akses buku lainnya dan fitur menambah buku sendiri.</p>
+              )}
               {!query && sortMode === 'manual' && filteredBooks.length > 1 && <p className="drag-hint">Tahan lalu geser sampul untuk mengatur urutan buku.</p>}
               <div className="book-grid">
                 {filteredBooks.map((book, index) => (
@@ -972,6 +983,8 @@ function App() {
                     isAdmin={isAdmin}
                     showOwner={showOwner}
                     onAccess={() => openAccess(book)}
+                    isSample={!!book.is_sample}
+                    onToggleSample={() => toggleSample(book)}
                     dragging={draggingId === book.id}
                     onPointerDown={(query || sortMode !== 'manual') ? undefined : (e) => startCardDrag(e, book.id)}
                   />
@@ -1098,7 +1111,7 @@ function App() {
   );
 }
 
-function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, shared, isAdmin, ownerLabel, showOwner, dragging, onPointerDown}) {
+function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, onToggleSample, isSample, shared, isAdmin, ownerLabel, showOwner, dragging, onPointerDown}) {
   const colors = coverColors(book.title);
   const percentage = Math.min(100, Math.max(0, Number(progress?.percentage || 0)));
   return <article
@@ -1130,7 +1143,7 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
         <div className="book-card-actions">
           {shared ? (
             <>
-              <span className="shared-badge" title="Buku ini dibagikan oleh admin">Dibagikan</span>
+              <span className="shared-badge" title={isSample ? 'Buku contoh dari admin' : 'Buku ini dibagikan oleh admin'}>{isSample ? 'Contoh' : 'Dibagikan'}</span>
               <button className="download-button" title="Unduh file EPUB" onClick={onDownload}>
                 <Download size={14}/>
               </button>
@@ -1138,9 +1151,14 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
           ) : (
             <>
               {isAdmin && (
-                <button className="access-button" title="Kelola akses pembaca" onClick={onAccess}>
-                  <Users size={14}/>
-                </button>
+                <>
+                  <button className={`sample-button${isSample ? ' on' : ''}`} title={isSample ? 'Buku contoh untuk semua pengguna (klik untuk batalkan)' : 'Jadikan buku contoh untuk semua pengguna'} onClick={onToggleSample}>
+                    <Gift size={14}/>
+                  </button>
+                  <button className="access-button" title="Kelola akses pembaca" onClick={onAccess}>
+                    <Users size={14}/>
+                  </button>
+                </>
               )}
               <button className="edit-button" title="Ubah judul atau penulis" onClick={onEdit}>
                 <Pencil size={13}/>
