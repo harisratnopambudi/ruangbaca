@@ -960,6 +960,17 @@ function App() {
   }, [userId, isAdmin]);
 
   const pendingCount = orders.filter(o => o.status === 'pending').length;
+
+  // Tiga buku terlaris untuk ilustrasi banner (diambil dari fungsi server get_bestsellers)
+  const [bestsellers, setBestsellers] = useState([]);
+  useEffect(() => {
+    if (!supabase || !userId) { setBestsellers([]); return; }
+    let alive = true;
+    supabase.rpc('get_bestsellers').then(({ data, error }) => {
+      if (alive && !error && Array.isArray(data)) setBestsellers(data);
+    });
+    return () => { alive = false; };
+  }, [userId]);
   // Pengguna baru (belum punya buku selain contoh): arahkan perhatian ke tab Katalog
   const nudgeCatalog = !isAdmin && booksLoaded && !loadingBooks && tab !== 'catalog' && !books.some(b => !b.is_sample);
 
@@ -1110,7 +1121,13 @@ function App() {
               <div className="hero-foot"><span><CheckCircle2 size={15}/> Tersimpan di cloud</span><span><CheckCircle2 size={15}/> Progres tersinkronisasi</span></div>
             </div>
             <div className="hero-art" aria-hidden="true">
-              <div className="art-sun"></div><div className="art-book book-one"></div><div className="art-book book-two"></div><div className="art-book book-three"></div><div className="art-line"></div>
+              <div className="art-sun"></div>
+              {[['book-one', bestsellers[1]], ['book-two', bestsellers[0]], ['book-three', bestsellers[2]]].map(([cls, b]) => (
+                <div key={cls} className={`art-book ${cls}${b?.cover_thumb ? ' has-cover' : ''}`}>
+                  {b?.cover_thumb && <img src={b.cover_thumb} alt="" draggable="false"/>}
+                </div>
+              ))}
+              <div className="art-line"></div>
             </div>
           </section>
 
