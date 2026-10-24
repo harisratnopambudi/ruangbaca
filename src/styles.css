@@ -465,3 +465,8 @@ body.is-dragging-card *{cursor:grabbing !important}
   .catalog-check{width:22px;height:22px;top:6px;left:6px}
   .order-bar{bottom:10px;padding:10px 10px 10px 16px;gap:8px}
 }
+
+/* Nama penerima di atas QRIS */
+.qris-name{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:4px;text-align:center}
+.qris-name span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#777}
+.qris-name b{font-size:15px;letter-spacing:.04em;color:#1c1c1c}
