@@ -3025,7 +3025,10 @@ const hashStr = str => { let h = 0; for (const c of String(str || '')) h = (h * 
 
 function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, onToggle, isAdmin, orders = [], onCheckout, onClear }) {
   const [q, setQ] = useState('');
-  const list = items.filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()));
+  const cmpText = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
+  const list = items
+    .filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => cmpText(a.author, b.author) || cmpText(a.title, b.title));
   const isOwned = i => ownedIds.has(i.book_id) || ownedKeys.has(bookKey(i.title, i.author));
   const chosen = items.filter(i => selected.includes(i.id) && !isOwned(i));
   const order = calcOrder(chosen.length);
