@@ -470,3 +470,29 @@ body.is-dragging-card *{cursor:grabbing !important}
 .qris-name{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:4px;text-align:center}
 .qris-name span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#777}
 .qris-name b{font-size:15px;letter-spacing:.04em;color:#1c1c1c}
+
+/* ===== Pesanan ===== */
+.tab-badge{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;margin-left:2px}
+.status-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.status-pill.pending{background:rgba(217,119,6,.15);color:#b45309}
+.status-pill.approved{background:rgba(22,163,74,.15);color:#15803d}
+.status-pill.rejected{background:rgba(220,38,38,.13);color:#b91c1c}
+.my-orders{margin:0 0 20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:6px 6px 8px}
+.my-orders-title{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;padding:8px 12px 4px}
+.my-order{display:flex;align-items:center;gap:12px;padding:8px 12px;font-size:13px}
+.my-order + .my-order{border-top:1px solid var(--line)}
+.mo-code{font-weight:700;letter-spacing:.03em}
+.mo-meta{flex:1;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-list{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin-bottom:18px}
+.order-card{border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.order-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.order-card-head b{letter-spacing:.04em}
+.order-card-meta{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.order-books{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:3px}
+.order-card-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;padding-top:12px;border-top:1px solid var(--line)}
+.order-total{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.order-actions{display:flex;align-items:center;gap:8px}
+.order-reject{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:9px 14px;border-radius:12px;cursor:pointer}
+.order-reject:hover{color:#b91c1c;border-color:rgba(220,38,38,.4)}
+.order-history-toggle{border:0;background:transparent;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0;margin-bottom:12px}
+@media(max-width:760px){.order-list{grid-template-columns:1fr}}
