@@ -1130,7 +1130,7 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
         </div>
       </div>
       <p className="book-author">{book.author}</p>
-      {ownerLabel && <p className="owner-tag" title={`Diunggah oleh ${ownerLabel}`}>Dari: {ownerLabel}</p>}
+      {isAdmin && <p className={`owner-tag${ownerLabel ? '' : ' mine'}`} title={ownerLabel ? `Diunggah oleh ${ownerLabel}` : 'Diunggah oleh admin'}>{ownerLabel ? `Dari: ${ownerLabel}` : 'Milik saya'}</p>}
       <div className="book-meta"><span>{percentage >= 100 ? 'Selesai dibaca' : percentage > 0 ? `${Math.max(1, Math.round(percentage))}% dibaca` : 'Belum dibaca'}</span></div>
       <div className="progress-track"><span style={{width: `${percentage}%`}}/></div>
     </div>
