@@ -824,6 +824,15 @@ function App() {
   const [sortMode, setSortMode] = useState(() => {
     try { return localStorage.getItem('rb_sort') || 'manual'; } catch { return 'manual'; }
   });
+  const [showOwner, setShowOwner] = useState(() => {
+    try { return localStorage.getItem('rb_show_owner') !== '0'; } catch { return true; }
+  });
+  const toggleOwner = () => {
+    setShowOwner(v => {
+      try { localStorage.setItem('rb_show_owner', v ? '0' : '1'); } catch {}
+      return !v;
+    });
+  };
   const changeSort = (value) => {
     setSortMode(value);
     try { localStorage.setItem('rb_sort', value); } catch {}
@@ -913,6 +922,18 @@ function App() {
                   <option value="title-desc">Judul Z–A</option>
                   <option value="author-asc">Penulis A–Z</option>
                 </select>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className={`owner-toggle${showOwner ? ' on' : ''}`}
+                    onClick={toggleOwner}
+                    title={showOwner ? 'Sembunyikan keterangan pengunggah' : 'Tampilkan keterangan pengunggah'}
+                    aria-pressed={showOwner}
+                  >
+                    {showOwner ? <Eye size={16}/> : <EyeOff size={16}/>}
+                    <span>Pengunggah</span>
+                  </button>
+                )}
                 <button className="primary-button" onClick={onAddBookClick} disabled={uploadBusy}>
                   {uploadBusy ? <LoaderCircle size={17} className="spin"/> : <Plus size={18}/>}
                   {uploadBusy
@@ -949,6 +970,7 @@ function App() {
                     shared={!isAdmin && book.user_id !== userId}
                     ownerLabel={isAdmin && book.user_id !== userId ? (book.uploader_email || 'pengguna lain') : null}
                     isAdmin={isAdmin}
+                    showOwner={showOwner}
                     onAccess={() => openAccess(book)}
                     dragging={draggingId === book.id}
                     onPointerDown={(query || sortMode !== 'manual') ? undefined : (e) => startCardDrag(e, book.id)}
@@ -1076,7 +1098,7 @@ function App() {
   );
 }
 
-function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, shared, isAdmin, ownerLabel, dragging, onPointerDown}) {
+function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, shared, isAdmin, ownerLabel, showOwner, dragging, onPointerDown}) {
   const colors = coverColors(book.title);
   const percentage = Math.min(100, Math.max(0, Number(progress?.percentage || 0)));
   return <article
@@ -1134,7 +1156,7 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
         </div>
       </div>
       <p className="book-author">{book.author}</p>
-      {isAdmin && <p className={`owner-tag${ownerLabel ? '' : ' mine'}`} title={ownerLabel ? `Diunggah oleh ${ownerLabel}` : 'Diunggah oleh admin'}>{ownerLabel ? `Dari: ${ownerLabel}` : 'Milik saya'}</p>}
+      {isAdmin && showOwner && <p className={`owner-tag${ownerLabel ? '' : ' mine'}`} title={ownerLabel ? `Diunggah oleh ${ownerLabel}` : 'Diunggah oleh admin'}>{ownerLabel ? `Dari: ${ownerLabel}` : 'Milik saya'}</p>}
       <div className="book-meta"><span>{percentage >= 100 ? 'Selesai dibaca' : percentage > 0 ? `${Math.max(1, Math.round(percentage))}% dibaca` : 'Belum dibaca'}</span></div>
       <div className="progress-track"><span style={{width: `${percentage}%`}}/></div>
     </div>
