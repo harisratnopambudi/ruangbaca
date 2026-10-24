@@ -896,13 +896,18 @@ function App() {
     const todo = books.filter(b => b.user_id === userId && !b.cover_thumb && covers[b.id] && !thumbTried.current.has(b.id));
     if (!todo.length) return;
     (async () => {
+      let ok = 0, firstError = '';
       for (const b of todo) {
         thumbTried.current.add(b.id);
         const thumb = await makeThumb(covers[b.id]);
         if (!thumb) continue;
         const { error } = await supabase.from('books').update({ cover_thumb: thumb }).eq('id', b.id);
-        if (!error) setBooks(list => list.map(x => x.id === b.id ? { ...x, cover_thumb: thumb } : x));
+        if (error) { firstError = firstError || error.message; continue; }
+        ok += 1;
+        setBooks(list => list.map(x => x.id === b.id ? { ...x, cover_thumb: thumb } : x));
       }
+      if (firstError) notify(`Sampul katalog gagal disimpan: ${firstError}`, 'error');
+      else if (ok > 0) notify(`Sampul katalog diperbarui (${ok} buku).`);
     })();
   }, [isAdmin, userId, books, covers]);
 
@@ -2823,7 +2828,7 @@ const normalizeWa = raw => {
 };
 
 // Perkecil sampul menjadi thumbnail JPEG kecil untuk katalog
-const makeThumb = (src, width = 260) => new Promise(resolve => {
+const makeThumb = (src, width = 200) => new Promise(resolve => {
   if (!src) { resolve(null); return; }
   const img = new Image();
   img.onload = () => {
@@ -2833,12 +2838,22 @@ const makeThumb = (src, width = 260) => new Promise(resolve => {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.75));
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
     } catch { resolve(null); }
   };
   img.onerror = () => resolve(null);
   img.src = src;
 });
+
+const COVER_PALETTES = [
+  { bg: '#e9e2d3', fg: '#3b372f', line: '#b9a47a' },
+  { bg: '#dde5dd', fg: '#2c463d', line: '#8fae9e' },
+  { bg: '#eadcd4', fg: '#58392f', line: '#c49a85' },
+  { bg: '#dce2ea', fg: '#31425a', line: '#8fa3bf' },
+  { bg: '#e8e4c8', fg: '#4a4a2a', line: '#b5b07a' },
+  { bg: '#e3d9e6', fg: '#4a3550', line: '#a995b0' }
+];
+const hashStr = str => { let h = 0; for (const c of String(str || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
 function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, isAdmin, onCheckout, onClear }) {
   const [q, setQ] = useState('');
@@ -2847,7 +2862,7 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
   const order = calcOrder(chosen.length);
   const total = order.total;
 
-  return <section className="shelf-section catalog-section">
+  return <section className={`shelf-section catalog-section${!isAdmin && chosen.length ? ' has-bar' : ''}`}>
     <div className="section-heading">
       <div><div className="eyebrow muted">KATALOG BUKU</div><h2>Katalog <span className="count">{items.length}</span></h2></div>
       <div className="shelf-tools">
@@ -2856,15 +2871,15 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
     </div>
 
     {!isAdmin && (
-      <div className="price-chips">
+      <div className="price-strip" aria-label="Daftar harga">
         {PACKAGES.map(pk => (
-          <div className="price-chip" key={pk.qty}><span>{pk.label}</span><b>{formatRupiah(pk.price)}</b></div>
+          <div className="price-item" key={pk.qty}><span>{pk.label}</span><b>{formatRupiah(pk.price)}</b></div>
         ))}
       </div>
     )}
 
     {error ? (
-      <div className="info-banner">Katalog belum siap: {error}. Jalankan SQL <b>catalog.sql</b> di Supabase.</div>
+      <div className="info-banner">Katalog belum siap: {error}. Jalankan SQL <b>catalog_auto.sql</b> di Supabase.</div>
     ) : loading && !items.length ? (
       <div className="catalog-empty"><LoaderCircle size={22} className="spin"/> Memuat katalog…</div>
     ) : list.length === 0 ? (
@@ -2875,36 +2890,45 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
       </div>
     ) : (
       <>
-        {isAdmin
-          ? <p className="drag-hint">Katalog terisi otomatis dari semua buku di rak Anda (kecuali buku contoh). Pengguna lain melihatnya di tab ini.</p>
-          : <p className="drag-hint">Centang buku yang ingin dipesan. Buku terkunci sampai pembayaran dikonfirmasi admin.</p>}
+        <p className="catalog-note">
+          {isAdmin
+            ? 'Katalog terisi otomatis dari semua buku di rak Anda (kecuali buku contoh).'
+            : 'Centang buku yang ingin dipesan. Buku tetap terkunci sampai pembayaran dikonfirmasi admin.'}
+        </p>
         <div className="catalog-grid">
           {list.map(item => {
             const owned = !isAdmin && ownedIds.has(item.book_id);
             const isSel = selected.includes(item.id);
+            const pal = COVER_PALETTES[hashStr(item.title) % COVER_PALETTES.length];
             return <article key={item.id} className={`catalog-card${isSel ? ' selected' : ''}${owned ? ' owned' : ''}`}>
               <div className="catalog-cover" onClick={() => !isAdmin && !owned && onToggle(item.id)}>
                 {item.cover_data
                   ? <img src={item.cover_data} alt={item.title} draggable="false"/>
-                  : <div className="catalog-cover-fallback"><span>{item.title}</span><small>{item.author}</small></div>}
+                  : (
+                    <div className="cover-fallback" style={{ background: pal.bg, color: pal.fg }}>
+                      <div className="cover-frame" style={{ borderColor: pal.line }}>
+                        <span className="cover-name">{item.title}</span>
+                        <i style={{ background: pal.line }}/>
+                        <small>{item.author}</small>
+                      </div>
+                    </div>
+                  )}
                 {!isAdmin && !owned && (
                   <button type="button" role="checkbox" aria-checked={isSel} aria-label={`Pilih ${item.title}`}
                     className={`catalog-check${isSel ? ' on' : ''}`}
                     onClick={e => { e.stopPropagation(); onToggle(item.id); }}>
-                    {isSel && <Check size={15}/>}
+                    {isSel && <Check size={14}/>}
                   </button>
-                )}
-                {!isAdmin && (
-                  <span className={`catalog-status ${owned ? 'open' : 'locked'}`}>
-                    {owned ? <><Check size={12}/> Dimiliki</> : <><Lock size={12}/> Terkunci</>}
-                  </span>
                 )}
               </div>
               <div className="catalog-info">
                 <h3 title={item.title}>{item.title}</h3>
                 <p className="catalog-author">{item.author}</p>
-                {item.description && <p className="catalog-desc">{item.description}</p>}
-                <div className="catalog-price">{owned ? 'Sudah ada di rak Anda' : `${formatRupiah(PACKAGES[0].price)} / ebook`}</div>
+                {!isAdmin && (
+                  <p className={`catalog-state${owned ? ' open' : ''}`}>
+                    {owned ? <><Check size={12}/> Dimiliki</> : <><Lock size={12}/> Terkunci</>}
+                  </p>
+                )}
               </div>
             </article>;
           })}
@@ -2916,11 +2940,11 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
       <div className="order-bar">
         <div className="order-bar-info">
           <strong>{chosen.length} buku dipilih</strong>
-          <span>Total {formatRupiah(total)}</span>
-          {order.hint && <small className="order-hint">💡 {order.hint}</small>}
+          <span>{formatRupiah(total)}</span>
+          {order.hint && <small className="order-hint">{order.hint}</small>}
         </div>
-        <button className="order-clear" onClick={onClear}>Bersihkan</button>
-        <button className="primary-button" onClick={onCheckout}><ShoppingBag size={17}/> Pesan &amp; Bayar</button>
+        <button className="order-clear" onClick={onClear}>Batal</button>
+        <button className="primary-button" onClick={onCheckout}>Pesan &amp; Bayar</button>
       </div>
     )}
   </section>;
