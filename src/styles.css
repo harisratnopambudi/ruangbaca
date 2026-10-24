@@ -502,3 +502,7 @@ body.is-dragging-card *{cursor:grabbing !important}
 .tabs-bar button.nudge::after{content:'';width:7px;height:7px;border-radius:50%;background:#dc2626;margin-left:-2px;animation:tabBlink 1.2s ease-in-out infinite}
 @keyframes tabBlink{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion: reduce){.tabs-bar button.nudge,.tabs-bar button.nudge::after{animation:none}}
+
+/* Banner: ilustrasi buku memakai cover buku terlaris */
+.art-book.has-cover{background:var(--surface-2);overflow:hidden;border-left:0}
+.art-book.has-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
