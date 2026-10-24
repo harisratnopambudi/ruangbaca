@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList
 } from 'lucide-react';
 import './styles.css';
 
@@ -889,11 +889,65 @@ function App() {
   const toggleCatalogSelect = id =>
     setCatalogSelected(sel => sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id]);
 
-  // Admin: thumbnail sampul disimpan otomatis ke tiap buku agar tampil di katalog pengguna lain
+  // ---------- Pesanan: dibuat pembeli, diterima admin ----------
+  const [orders, setOrders] = useState([]);
+  const loadOrders = async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, order_items(book_id,title)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) return; // tabel belum dibuat
+    setOrders(data || []);
+    if (!isAdmin) {
+      const have = new Set(books.map(b => b.id));
+      const missing = (data || []).some(o => o.status === 'approved' && (o.order_items || []).some(i => i.book_id && !have.has(i.book_id)));
+      if (missing) loadBooks();
+    }
+  };
+  const loadOrdersRef = useRef(null);
+  loadOrdersRef.current = loadOrders;
+
+  useEffect(() => {
+    if (!userId) { setOrders([]); return; }
+    loadOrdersRef.current();
+    if (!(isAdmin || tab === 'catalog' || tab === 'orders')) return;
+    const t = setInterval(() => loadOrdersRef.current(), 45000);
+    return () => clearInterval(t);
+  }, [userId, isAdmin, tab]);
+
+  const pendingCount = orders.filter(o => o.status === 'pending').length;
+
+  const submitOrder = async ({ code, total, ids }) => {
+    const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
+    if (error) { notify(error.message || 'Gagal membuat pesanan.', 'error'); return { ok: false }; }
+    setCatalogSelected([]);
+    loadOrders();
+    return { ok: true };
+  };
+
+  const approveOrder = async o => {
+    if (!window.confirm(`Terima pesanan ${o.code} dan buka kunci ${(o.order_items || []).length} buku untuk ${o.user_email}?`)) return;
+    const { error } = await supabase.rpc('approve_order', { p_order_id: o.id });
+    if (error) { notify(error.message || 'Gagal menerima pesanan.', 'error'); return; }
+    notify('Pesanan diterima. Buku sudah masuk ke rak pembeli.');
+    loadOrders();
+  };
+
+  const rejectOrder = async o => {
+    if (!window.confirm(`Tolak pesanan ${o.code} dari ${o.user_email}?`)) return;
+    const { error } = await supabase.rpc('reject_order', { p_order_id: o.id });
+    if (error) { notify(error.message || 'Gagal menolak pesanan.', 'error'); return; }
+    notify('Pesanan ditolak.');
+    loadOrders();
+  };
+
+  // Thumbnail sampul disimpan otomatis ke tiap buku (admin: semua buku, pengguna: buku sendiri) agar tampil di katalog
   const thumbTried = useRef(new Set());
   useEffect(() => {
-    if (!isAdmin || !userId) return;
-    const todo = books.filter(b => b.user_id === userId && !b.cover_thumb && covers[b.id] && !thumbTried.current.has(b.id));
+    if (!userId) return;
+    const todo = books.filter(b => (isAdmin || b.user_id === userId) && !b.cover_thumb && covers[b.id] && !thumbTried.current.has(b.id));
     if (!todo.length) return;
     (async () => {
       let ok = 0, firstError = '';
@@ -906,8 +960,10 @@ function App() {
         ok += 1;
         setBooks(list => list.map(x => x.id === b.id ? { ...x, cover_thumb: thumb } : x));
       }
-      if (firstError) notify(`Sampul katalog gagal disimpan: ${firstError}`, 'error');
-      else if (ok > 0) notify(`Sampul katalog diperbarui (${ok} buku).`);
+      if (isAdmin) {
+        if (firstError) notify(`Sampul katalog gagal disimpan: ${firstError}`, 'error');
+        else if (ok > 0) notify(`Sampul katalog diperbarui (${ok} buku).`);
+      }
     })();
   }, [isAdmin, userId, books, covers]);
 
@@ -1017,6 +1073,11 @@ function App() {
           <div className="tabs-bar" role="tablist">
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
             <button role="tab" aria-selected={tab === 'catalog'} className={tab === 'catalog' ? 'active' : ''} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
+            {isAdmin && (
+              <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
+                <ClipboardList size={16}/> Pesanan{pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
+              </button>
+            )}
           </div>
 
           {tab === 'shelf' && (
@@ -1093,7 +1154,7 @@ function App() {
               </div>
               </>
              )}
-            <div className="privacy-note"><span className="privacy-dot"></span> Koleksi ini privat untuk akun Anda. Masuk dengan akun yang sama untuk mengaksesnya di perangkat lain.</div>
+            <div className="privacy-note"><span className="privacy-dot"></span> Buku yang Anda unggah dapat tampil di katalog dan dibeli pengguna lain. Masuk dengan akun yang sama untuk mengaksesnya di perangkat lain.</div>
           </section>
           )}
 
@@ -1103,24 +1164,31 @@ function App() {
               loading={catalogLoading}
               error={catalogError}
               ownedIds={new Set(books.map(b => b.id))}
+              ownedKeys={new Set(books.map(b => bookKey(b.title, b.author)))}
               selected={catalogSelected}
               onToggle={toggleCatalogSelect}
               isAdmin={isAdmin}
+              orders={orders}
               onCheckout={() => setCheckoutOpen(true)}
               onClear={() => setCatalogSelected([])}
             />
+          )}
+
+          {tab === 'orders' && isAdmin && (
+            <OrdersSection orders={orders} onApprove={approveOrder} onReject={rejectOrder} />
           )}
         </main>
       )}
 
       {checkoutOpen && (
         <CheckoutModal
-          items={catalogItems.filter(i => catalogSelected.includes(i.id) && !books.some(b => b.id === i.book_id))}
+          items={catalogItems.filter(i => catalogSelected.includes(i.id) && !books.some(b => b.id === i.book_id || bookKey(b.title, b.author) === bookKey(i.title, i.author)))}
           email={session?.user?.email || ''}
           onClose={() => setCheckoutOpen(false)}
+          onSubmit={submitOrder}
           onConfirmed={() => {
             setCheckoutOpen(false);
-            notify('Lanjutkan di WhatsApp. Admin akan membuka kunci buku setelah pembayaran dicek.');
+            notify('Pesanan tercatat. Lanjutkan konfirmasi di WhatsApp, admin akan menerima pesananmu.');
           }}
         />
       )}
@@ -2783,6 +2851,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
   </main>;
 }
 
+const bookKey = (title, author) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}`;
 const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
 const ADMIN_WHATSAPP = '6285155228041'; // nomor WhatsApp admin untuk konfirmasi pembayaran
 const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
@@ -2847,6 +2916,63 @@ const makeThumb = (src, width = 200) => new Promise(resolve => {
   img.src = src;
 });
 
+const ORDER_STATUS = { pending: 'Menunggu', approved: 'Diterima', rejected: 'Ditolak' };
+
+function OrdersSection({ orders, onApprove, onReject }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const pending = orders.filter(o => o.status === 'pending');
+  const history = orders.filter(o => o.status !== 'pending');
+  const fmt = iso => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+  const renderOrder = o => (
+    <article className="order-card" key={o.id}>
+      <div className="order-card-head">
+        <b>{o.code}</b>
+        <span className={`status-pill ${o.status}`}>{ORDER_STATUS[o.status] || o.status}</span>
+      </div>
+      <div className="order-card-meta">{o.user_email} · {fmt(o.created_at)}</div>
+      <ul className="order-books">
+        {(o.order_items || []).map((it, i) => <li key={`${it.book_id || it.title}-${i}`}>{it.title}</li>)}
+      </ul>
+      <div className="order-card-foot">
+        <span className="order-total">{formatRupiah(o.total)}</span>
+        {o.status === 'pending' && (
+          <div className="order-actions">
+            <button className="order-reject" onClick={() => onReject(o)}>Tolak</button>
+            <button className="primary-button" onClick={() => onApprove(o)}><Check size={16}/> Terima</button>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+
+  return <section className="shelf-section orders-section">
+    <div className="section-heading">
+      <div><div className="eyebrow muted">PESANAN MASUK</div><h2>Pesanan <span className="count">{pending.length}</span></h2></div>
+    </div>
+    <p className="catalog-note">Cek bukti bayar di WhatsApp, lalu klik <b>Terima</b>. Semua buku dalam pesanan otomatis masuk ke rak pembeli.</p>
+
+    {pending.length === 0 ? (
+      <div className="catalog-empty">
+        <ClipboardList size={34}/>
+        <h3>Tidak ada pesanan yang menunggu</h3>
+        <p>Pesanan baru dari pembeli akan muncul di sini.</p>
+      </div>
+    ) : (
+      <div className="order-list">{pending.map(renderOrder)}</div>
+    )}
+
+    {history.length > 0 && (
+      <>
+        <button className="order-history-toggle" onClick={() => setShowHistory(v => !v)}>
+          {showHistory ? 'Sembunyikan riwayat' : `Tampilkan riwayat (${history.length})`}
+        </button>
+        {showHistory && <div className="order-list">{history.map(renderOrder)}</div>}
+      </>
+    )}
+  </section>;
+}
+
 const COVER_PALETTES = [
   { bg: '#e9e2d3', fg: '#3b372f', line: '#b9a47a' },
   { bg: '#dde5dd', fg: '#2c463d', line: '#8fae9e' },
@@ -2857,10 +2983,11 @@ const COVER_PALETTES = [
 ];
 const hashStr = str => { let h = 0; for (const c of String(str || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, isAdmin, onCheckout, onClear }) {
+function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, onToggle, isAdmin, orders = [], onCheckout, onClear }) {
   const [q, setQ] = useState('');
   const list = items.filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()));
-  const chosen = items.filter(i => selected.includes(i.id) && !ownedIds.has(i.book_id));
+  const isOwned = i => ownedIds.has(i.book_id) || ownedKeys.has(bookKey(i.title, i.author));
+  const chosen = items.filter(i => selected.includes(i.id) && !isOwned(i));
   const order = calcOrder(chosen.length);
   const total = order.total;
 
@@ -2880,6 +3007,19 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
       </div>
     )}
 
+    {!isAdmin && orders.length > 0 && (
+      <div className="my-orders">
+        <div className="my-orders-title">Pesanan saya</div>
+        {orders.slice(0, 5).map(o => (
+          <div className="my-order" key={o.id}>
+            <span className="mo-code">{o.code}</span>
+            <span className="mo-meta">{(o.order_items || []).length} buku · {formatRupiah(o.total)}</span>
+            <span className={`status-pill ${o.status}`}>{ORDER_STATUS[o.status] || o.status}</span>
+          </div>
+        ))}
+      </div>
+    )}
+
     {error ? (
       <div className="info-banner">Katalog belum siap: {error}. Jalankan SQL <b>catalog_auto.sql</b> di Supabase.</div>
     ) : loading && !items.length ? (
@@ -2894,12 +3034,12 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
       <>
         <p className="catalog-note">
           {isAdmin
-            ? 'Katalog terisi otomatis dari semua buku di rak Anda (kecuali buku contoh).'
+            ? 'Katalog terisi otomatis dari semua buku yang diunggah siapa pun (kecuali buku contoh).'
             : 'Centang buku yang ingin dipesan. Buku tetap terkunci sampai pembayaran dikonfirmasi admin.'}
         </p>
         <div className="catalog-grid">
           {list.map(item => {
-            const owned = !isAdmin && ownedIds.has(item.book_id);
+            const owned = !isAdmin && isOwned(item);
             const isSel = selected.includes(item.id);
             const pal = COVER_PALETTES[hashStr(item.title) % COVER_PALETTES.length];
             return <article key={item.id} className={`catalog-card${isSel ? ' selected' : ''}${owned ? ' owned' : ''}`}>
@@ -2952,8 +3092,9 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
   </section>;
 }
 
-function CheckoutModal({ items, email, onClose, onConfirmed }) {
+function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
   const [code] = useState(() => `RB-${Date.now().toString(36).toUpperCase()}`);
+  const [busy, setBusy] = useState(false);
   const [qrisOk, setQrisOk] = useState(true);
   const order = calcOrder(items.length);
   const total = order.total;
@@ -2963,6 +3104,17 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
   const text = `Halo Admin Ruang Baca, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nRincian:\n${breakdown}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
   const link = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(text)}` : null;
   const qrisSrc = `${import.meta.env.BASE_URL}qris.png`;
+
+  const confirmPayment = async () => {
+    if (!link || busy) return;
+    setBusy(true);
+    const w = window.open('about:blank', '_blank');
+    const res = await onSubmit({ code, total, ids: items.map(i => i.book_id) });
+    setBusy(false);
+    if (!res.ok) { try { w && w.close(); } catch {} return; }
+    if (w) w.location.href = link; else window.location.href = link;
+    onConfirmed();
+  };
 
   return <div className="modal-backdrop" onClick={onClose}>
     <div className="modal-card checkout-card" onClick={e => e.stopPropagation()}>
@@ -2997,9 +3149,10 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
       </ol>
 
       {link
-        ? <a className="primary-button wa-button" href={link} target="_blank" rel="noopener noreferrer" onClick={onConfirmed}>
-            <MessageCircle size={18}/> Saya sudah bayar — Konfirmasi via WhatsApp
-          </a>
+        ? <button className="primary-button wa-button" onClick={confirmPayment} disabled={busy}>
+            {busy ? <LoaderCircle size={18} className="spin"/> : <MessageCircle size={18}/>}
+            {busy ? 'Mencatat pesanan…' : 'Saya sudah bayar — Konfirmasi via WhatsApp'}
+          </button>
         : <div className="info-banner">Nomor WhatsApp admin belum diatur.</div>}
     </div>
   </div>;
