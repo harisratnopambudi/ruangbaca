@@ -378,3 +378,9 @@ body.is-dragging-card *{cursor:grabbing !important}
 /* Lupa kata sandi */
 .auth-forgot{align-self:flex-end;margin:-6px 0 0;border:0;background:transparent;color:#0d9488;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:2px 0}
 .auth-forgot:hover{text-decoration:underline}
+
+/* Ingat saya */
+.auth-options{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 2px}
+.auth-options .auth-forgot{align-self:auto;margin:0}
+.auth-form .remember-check{display:inline-flex;flex-direction:row;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;user-select:none}
+.auth-form .remember-check input{width:16px;height:16px;margin:0;padding:0;accent-color:#0d9488;cursor:pointer;flex:none}
