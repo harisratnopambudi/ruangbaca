@@ -2783,6 +2783,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
   </main>;
 }
 
+const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
 const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
 
 // Aturan harga: 1 ebook = Rp5.000 | Paket 3 ebook = Rp10.000 | Paket 10 ebook = Rp30.000
@@ -2981,6 +2982,7 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
       </div>
 
       <div className="qris-box">
+        <div className="qris-name"><span>Atas nama</span><b>{QRIS_NAME}</b></div>
         {qrisOk
           ? <img src={qrisSrc} alt="QRIS pembayaran" onError={() => setQrisOk(false)}/>
           : <div className="qris-missing">Gambar QRIS belum dipasang. Hubungi admin lewat WhatsApp untuk mendapatkan kode pembayaran.</div>}
