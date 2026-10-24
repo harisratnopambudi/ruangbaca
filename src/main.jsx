@@ -324,6 +324,7 @@ function App() {
   const [covers, setCovers] = useState({});
   const [progress, setProgress] = useState({});
   const [loadingBooks, setLoadingBooks] = useState(false);
+  const [booksLoaded, setBooksLoaded] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -370,6 +371,7 @@ function App() {
       supabase.from('shelf_order').select('book_ids').maybeSingle()
     ]);
     setLoadingBooks(false);
+    setBooksLoaded(true);
     if (bookError || progressError) {
       notify(bookError?.message || progressError?.message || 'Gagal memuat koleksi.', 'error');
       return;
@@ -958,6 +960,8 @@ function App() {
   }, [userId, isAdmin]);
 
   const pendingCount = orders.filter(o => o.status === 'pending').length;
+  // Pengguna baru (belum punya buku selain contoh): arahkan perhatian ke tab Katalog
+  const nudgeCatalog = !isAdmin && booksLoaded && !loadingBooks && tab !== 'catalog' && !books.some(b => !b.is_sample);
 
   const submitOrder = async ({ code, total, ids }) => {
     const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
@@ -1112,7 +1116,7 @@ function App() {
 
           <div className="tabs-bar" role="tablist">
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
-            <button role="tab" aria-selected={tab === 'catalog'} className={tab === 'catalog' ? 'active' : ''} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
+            <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
             {isAdmin && (
               <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
                 <ClipboardList size={16}/> Pesanan{pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
