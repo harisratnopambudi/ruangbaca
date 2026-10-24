@@ -163,7 +163,28 @@ const formatRelativeTime = (isoString) => {
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+// "Ingat saya": sesi disimpan permanen (localStorage) atau hanya selama browser terbuka (sessionStorage)
+const REMEMBER_KEY = 'rb_remember';
+const authStorage = {
+  getItem: key => {
+    try { return window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key); } catch { return null; }
+  },
+  setItem: (key, value) => {
+    try {
+      const remember = window.localStorage.getItem(REMEMBER_KEY) !== '0';
+      const keep = remember ? window.localStorage : window.sessionStorage;
+      const drop = remember ? window.sessionStorage : window.localStorage;
+      keep.setItem(key, value);
+      drop.removeItem(key);
+    } catch {}
+  },
+  removeItem: key => {
+    try { window.localStorage.removeItem(key); window.sessionStorage.removeItem(key); } catch {}
+  }
+};
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey, { auth: { storage: authStorage, persistSession: true, autoRefreshToken: true } })
+  : null;
 
 const DB_NAME = 'ruang_baca_db';
 const STORE_NAME = 'book_covers';
@@ -294,6 +315,7 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [recovering, setRecovering] = useState(false);
+  const [remember, setRemember] = useState(() => { try { return localStorage.getItem('rb_remember') !== '0'; } catch { return true; } });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
@@ -384,6 +406,7 @@ function App() {
     e.preventDefault();
     if (!supabase) return;
     setAuthBusy(true); setAuthMessage('');
+    try { localStorage.setItem('rb_remember', remember ? '1' : '0'); } catch {}
     try {
       if (authMode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -881,7 +904,7 @@ function App() {
     try { window.history.replaceState(null, '', window.location.pathname); } catch {}
     notify('Kata sandi berhasil diubah.');
   }} />;
-  if (!session) return <AuthScreen {...{authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme}} />;
+  if (!session) return <AuthScreen {...{remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme}} />;
 
   return (
     <div className="app-shell">
@@ -2584,7 +2607,7 @@ function TocItem({item, onSelect, depth=0}) {
 }
 
 function AuthScreen(props) {
-  const {authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
+  const {remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
   const [showPassword, setShowPassword] = useState(false);
   return <main className="auth-page">
     <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
@@ -2607,7 +2630,13 @@ function AuthScreen(props) {
         </label>
         )}
         {authMode === 'login' && (
-          <button type="button" className="auth-forgot" onClick={() => { setAuthMessage(''); setAuthMode('forgot'); }}>Lupa kata sandi?</button>
+          <div className="auth-options">
+            <label className="remember-check">
+              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}/>
+              <span>Ingat saya</span>
+            </label>
+            <button type="button" className="auth-forgot" onClick={() => { setAuthMessage(''); setAuthMode('forgot'); }}>Lupa kata sandi?</button>
+          </div>
         )}
         {authMessage && <div className="auth-message"><AlertCircle size={16}/>{authMessage}</div>}
         <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Baca' : authMode === 'forgot' ? 'Kirim tautan reset' : 'Buat akun'}</button>
