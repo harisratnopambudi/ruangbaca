@@ -2784,6 +2784,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
 }
 
 const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
+const ADMIN_WHATSAPP = '6285155228041'; // nomor WhatsApp admin untuk konfirmasi pembayaran
 const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
 
 // Aturan harga: 1 ebook = Rp5.000 | Paket 3 ebook = Rp10.000 | Paket 10 ebook = Rp30.000
@@ -2956,7 +2957,7 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
   const [qrisOk, setQrisOk] = useState(true);
   const order = calcOrder(items.length);
   const total = order.total;
-  const wa = normalizeWa(import.meta.env.VITE_ADMIN_WHATSAPP);
+  const wa = normalizeWa(ADMIN_WHATSAPP);
   const lines = items.map((it, i) => `${i + 1}. ${it.title}`).join('\n');
   const breakdown = order.parts.map(pt => `${pt.count}x ${pt.label} = ${formatRupiah(pt.count * pt.price)}`).join('\n');
   const text = `Halo Admin Ruang Baca, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nRincian:\n${breakdown}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
@@ -2999,7 +3000,7 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
         ? <a className="primary-button wa-button" href={link} target="_blank" rel="noopener noreferrer" onClick={onConfirmed}>
             <MessageCircle size={18}/> Saya sudah bayar — Konfirmasi via WhatsApp
           </a>
-        : <div className="info-banner">Nomor WhatsApp admin belum diatur (VITE_ADMIN_WHATSAPP).</div>}
+        : <div className="info-banner">Nomor WhatsApp admin belum diatur.</div>}
     </div>
   </div>;
 }
