@@ -891,14 +891,37 @@ function App() {
 
   // ---------- Pesanan: dibuat pembeli, diterima admin ----------
   const [orders, setOrders] = useState([]);
+  const warnedOrders = useRef(false);
   const loadOrders = async () => {
     if (!supabase) return;
-    const { data, error } = await supabase
+    let data = null;
+    const first = await supabase
       .from('orders')
       .select('*, order_items(book_id,title)')
       .order('created_at', { ascending: false })
       .limit(200);
-    if (error) return; // tabel belum dibuat
+    if (!first.error) {
+      data = first.data;
+    } else {
+      // Cadangan: ambil pesanan dan item secara terpisah (tidak bergantung pada relasi di schema cache PostgREST)
+      const ord = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
+      if (ord.error) {
+        console.warn('Gagal memuat pesanan:', ord.error.message);
+        if (isAdmin && !warnedOrders.current) {
+          warnedOrders.current = true;
+          notify(`Pesanan gagal dimuat: ${ord.error.message}`, 'error');
+        }
+        return;
+      }
+      const rows = ord.data || [];
+      const ids = rows.map(o => o.id);
+      const itemsRes = ids.length
+        ? await supabase.from('order_items').select('order_id,book_id,title').in('order_id', ids)
+        : { data: [] };
+      const byOrder = {};
+      (itemsRes.data || []).forEach(it => { (byOrder[it.order_id] = byOrder[it.order_id] || []).push(it); });
+      data = rows.map(o => ({ ...o, order_items: byOrder[o.id] || [] }));
+    }
     setOrders(data || []);
     if (!isAdmin) {
       const have = new Set(books.map(b => b.id));
@@ -913,9 +936,26 @@ function App() {
     if (!userId) { setOrders([]); return; }
     loadOrdersRef.current();
     if (!(isAdmin || tab === 'catalog' || tab === 'orders')) return;
-    const t = setInterval(() => loadOrdersRef.current(), 45000);
-    return () => clearInterval(t);
+    const t = setInterval(() => loadOrdersRef.current(), isAdmin ? 12000 : 45000);
+    const onFocus = () => { if (document.visibilityState === 'visible') loadOrdersRef.current(); };
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [userId, isAdmin, tab]);
+
+  // Admin: pesanan baru muncul seketika lewat Realtime (butuh tabel orders di publikasi supabase_realtime)
+  useEffect(() => {
+    if (!supabase || !userId || !isAdmin) return;
+    const channel = supabase
+      .channel('orders-admin')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => loadOrdersRef.current())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, isAdmin]);
 
   const pendingCount = orders.filter(o => o.status === 'pending').length;
 
