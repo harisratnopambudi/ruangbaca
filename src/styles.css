@@ -496,3 +496,9 @@ body.is-dragging-card *{cursor:grabbing !important}
 .order-reject:hover{color:#b91c1c;border-color:rgba(220,38,38,.4)}
 .order-history-toggle{border:0;background:transparent;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0;margin-bottom:12px}
 @media(max-width:760px){.order-list{grid-template-columns:1fr}}
+
+/* Tab Katalog berkedip untuk pengguna baru */
+.tabs-bar button.nudge{color:var(--accent);animation:tabBlink 1.2s ease-in-out infinite}
+.tabs-bar button.nudge::after{content:'';width:7px;height:7px;border-radius:50%;background:#dc2626;margin-left:-2px;animation:tabBlink 1.2s ease-in-out infinite}
+@keyframes tabBlink{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){.tabs-bar button.nudge,.tabs-bar button.nudge::after{animation:none}}
