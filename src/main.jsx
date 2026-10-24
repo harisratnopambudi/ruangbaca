@@ -293,6 +293,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [authMode, setAuthMode] = useState('login');
+  const [recovering, setRecovering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
@@ -326,7 +327,10 @@ function App() {
       setSession(data.session);
       setAuthReady(true);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next);
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+    });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -381,6 +385,14 @@ function App() {
     if (!supabase) return;
     setAuthBusy(true); setAuthMessage('');
     try {
+      if (authMode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}${window.location.pathname}`
+        });
+        if (error) throw error;
+        setAuthMessage('Jika email terdaftar, tautan untuk mengatur ulang kata sandi sudah dikirim. Periksa kotak masuk atau folder spam.');
+        return;
+      }
       if (authMode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -395,7 +407,10 @@ function App() {
         if (error) throw error;
         setSession(data.session);
       }
-    } catch (e) { setAuthMessage(e.message || 'Autentikasi gagal.'); }
+    } catch (e) {
+      const m = String(e?.message || '');
+      setAuthMessage(/rate limit|too many/i.test(m) ? 'Terlalu banyak permintaan. Coba lagi beberapa menit lagi.' : (m || 'Autentikasi gagal.'));
+    }
     finally { setAuthBusy(false); }
   };
 
@@ -861,7 +876,12 @@ function App() {
 
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Baca…</span></div>;
-  if (!session) return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme}} />;
+  if (recovering && session) return <ResetPasswordScreen theme={theme} setTheme={setTheme} onDone={() => {
+    setRecovering(false);
+    try { window.history.replaceState(null, '', window.location.pathname); } catch {}
+    notify('Kata sandi berhasil diubah.');
+  }} />;
+  if (!session) return <AuthScreen {...{authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme}} />;
 
   return (
     <div className="app-shell">
@@ -2564,7 +2584,7 @@ function TocItem({item, onSelect, depth=0}) {
 }
 
 function AuthScreen(props) {
-  const {authMode,setAuthMode,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
+  const {authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
   const [showPassword, setShowPassword] = useState(false);
   return <main className="auth-page">
     <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
@@ -2572,10 +2592,11 @@ function AuthScreen(props) {
       <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
       <div className="auth-illustration"><div className="auth-orbit"></div><div className="auth-book"><BookOpen size={43}/></div></div>
       <div className="eyebrow muted">PERPUSTAKAAN DIGITAL ANDA</div>
-      <h1>{authMode === 'login' ? 'Senang melihat Anda kembali.' : 'Mulai bangun rak buku Anda.'}</h1>
-      <p className="auth-subtitle">{authMode === 'login' ? 'Masuk untuk melanjutkan cerita yang terakhir Anda baca.' : 'Buat akun untuk menyimpan koleksi dan progres membaca di cloud.'}</p>
+      <h1>{authMode === 'login' ? 'Senang melihat Anda kembali.' : authMode === 'forgot' ? 'Lupa kata sandi?' : 'Mulai bangun rak buku Anda.'}</h1>
+      <p className="auth-subtitle">{authMode === 'login' ? 'Masuk untuk melanjutkan cerita yang terakhir Anda baca.' : authMode === 'forgot' ? 'Masukkan email akun Anda. Kami akan mengirim tautan untuk mengatur ulang kata sandi.' : 'Buat akun untuk menyimpan koleksi dan progres membaca di cloud.'}</p>
       <form onSubmit={handleAuth} className="auth-form">
         <label>Email<input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nama@email.com" required autoComplete="email"/></label>
+        {authMode !== 'forgot' && (
         <label>Kata sandi
           <span className="password-field">
             <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
@@ -2584,11 +2605,66 @@ function AuthScreen(props) {
             </button>
           </span>
         </label>
+        )}
+        {authMode === 'login' && (
+          <button type="button" className="auth-forgot" onClick={() => { setAuthMessage(''); setAuthMode('forgot'); }}>Lupa kata sandi?</button>
+        )}
         {authMessage && <div className="auth-message"><AlertCircle size={16}/>{authMessage}</div>}
-        <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Baca' : 'Buat akun'}</button>
+        <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Baca' : authMode === 'forgot' ? 'Kirim tautan reset' : 'Buat akun'}</button>
       </form>
-      <div className="auth-switch">{authMode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'} <button onClick={() => {setAuthMode(authMode === 'login' ? 'signup' : 'login');}}>{authMode === 'login' ? 'Daftar sekarang' : 'Masuk'}</button></div>
+      {authMode === 'forgot' ? (
+        <div className="auth-switch"><button onClick={() => { setAuthMessage(''); setAuthMode('login'); }}>Kembali ke halaman masuk</button></div>
+      ) : (
+        <div className="auth-switch">{authMode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'} <button onClick={() => { setAuthMessage(''); setAuthMode(authMode === 'login' ? 'signup' : 'login'); }}>{authMode === 'login' ? 'Daftar sekarang' : 'Masuk'}</button></div>
+      )}
       <div className="auth-privacy"><span className="privacy-dot"></span> Koleksi pribadi · Sinkronisasi cloud · Tanpa TTS</div>
+    </div>
+  </main>;
+}
+
+function ResetPasswordScreen({ theme, setTheme, onDone }) {
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const submit = async e => {
+    e.preventDefault();
+    setMsg('');
+    if (pw.length < 6) { setMsg('Kata sandi minimal 6 karakter.'); return; }
+    if (pw !== pw2) { setMsg('Konfirmasi kata sandi tidak sama.'); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setBusy(false);
+    if (error) { setMsg(error.message || 'Gagal mengubah kata sandi.'); return; }
+    onDone();
+  };
+
+  return <main className="auth-page">
+    <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
+    <div className="auth-card">
+      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
+      <div className="eyebrow muted">ATUR ULANG KATA SANDI</div>
+      <h1>Buat kata sandi baru.</h1>
+      <p className="auth-subtitle">Masukkan kata sandi baru untuk akun Anda.</p>
+      <form onSubmit={submit} className="auth-form">
+        <label>Kata sandi baru
+          <span className="password-field">
+            <input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete="new-password" autoFocus/>
+            <button type="button" className="password-toggle" onClick={() => setShow(v => !v)} title={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
+              {show ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+          </span>
+        </label>
+        <label>Ulangi kata sandi baru
+          <span className="password-field">
+            <input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Ketik ulang kata sandi" required minLength={6} autoComplete="new-password"/>
+          </span>
+        </label>
+        {msg && <div className="auth-message"><AlertCircle size={16}/>{msg}</div>}
+        <button className="primary-button auth-submit" type="submit" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : null}{busy ? 'Menyimpan…' : 'Simpan kata sandi baru'}</button>
+      </form>
     </div>
   </main>;
 }
