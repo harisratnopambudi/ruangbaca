@@ -886,13 +886,13 @@ function App() {
   const toggleCatalogSelect = id =>
     setCatalogSelected(sel => sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id]);
 
-  const saveCatalogItem = async ({ book, item, price, description }) => {
+  const saveCatalogItem = async ({ book, item, description }) => {
     const thumb = covers[book.id] ? await makeThumb(covers[book.id]) : null;
     const payload = {
       book_id: book.id,
       title: book.title,
       author: book.author || null,
-      price,
+      price: PACKAGES[0].price,
       description: description || null,
       cover_data: thumb || item?.cover_data || null,
       is_active: true,
@@ -2800,6 +2800,41 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
 
 const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
 
+// Aturan harga: 1 ebook = Rp5.000 | Paket 3 ebook = Rp10.000 | Paket 10 ebook = Rp30.000
+const PACKAGES = [
+  { qty: 1, price: 5000, label: '1 ebook' },
+  { qty: 3, price: 10000, label: 'Paket 3 ebook' },
+  { qty: 10, price: 30000, label: 'Paket 10 ebook' }
+];
+
+// Hitung harga termurah untuk n buku dengan menggabungkan paket
+const calcOrder = n => {
+  if (!n || n <= 0) return { total: 0, parts: [], hint: '' };
+  const maxQ = Math.max(...PACKAGES.map(p => p.qty));
+  const limit = n + maxQ;
+  const cost = Array(limit + 1).fill(Infinity);
+  const pick = Array(limit + 1).fill(-1);
+  cost[0] = 0;
+  for (let j = 1; j <= limit; j++) {
+    PACKAGES.forEach((p, idx) => {
+      if (j >= p.qty && cost[j - p.qty] + p.price < cost[j]) { cost[j] = cost[j - p.qty] + p.price; pick[j] = idx; }
+    });
+  }
+  let best = n;
+  for (let j = n; j <= limit; j++) if (cost[j] < cost[best]) best = j;
+  const counts = {};
+  for (let k = best; k > 0; k -= PACKAGES[pick[k]].qty) counts[pick[k]] = (counts[pick[k]] || 0) + 1;
+  const parts = Object.entries(counts)
+    .map(([idx, count]) => ({ ...PACKAGES[idx], count }))
+    .sort((a, b) => b.qty - a.qty);
+  const total = cost[best];
+  let hint = '';
+  for (let j = n + 1; j <= limit; j++) {
+    if (cost[j] <= total) { hint = `Tambah ${j - n} buku lagi, harganya tetap ${formatRupiah(total)}`; break; }
+  }
+  return { total, parts, hint };
+};
+
 const normalizeWa = raw => {
   let d = String(raw || '').replace(/\D/g, '');
   if (!d) return '';
@@ -2829,7 +2864,8 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
   const [q, setQ] = useState('');
   const list = items.filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()));
   const chosen = items.filter(i => selected.includes(i.id) && !ownedIds.has(i.book_id));
-  const total = chosen.reduce((a, b) => a + Number(b.price || 0), 0);
+  const order = calcOrder(chosen.length);
+  const total = order.total;
 
   return <section className="shelf-section catalog-section">
     <div className="section-heading">
@@ -2839,6 +2875,14 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
         {isAdmin && <button className="primary-button" onClick={onAdd}><Plus size={18}/> Tambah ke katalog</button>}
       </div>
     </div>
+
+    {!isAdmin && (
+      <div className="price-chips">
+        {PACKAGES.map(pk => (
+          <div className="price-chip" key={pk.qty}><span>{pk.label}</span><b>{formatRupiah(pk.price)}</b></div>
+        ))}
+      </div>
+    )}
 
     {error ? (
       <div className="info-banner">Katalog belum siap: {error}. Jalankan SQL <b>catalog.sql</b> di Supabase.</div>
@@ -2877,10 +2921,10 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
                 <h3 title={item.title}>{item.title}</h3>
                 <p className="catalog-author">{item.author}</p>
                 {item.description && <p className="catalog-desc">{item.description}</p>}
-                <div className="catalog-price">{owned ? 'Sudah ada di rak Anda' : formatRupiah(item.price)}</div>
+                <div className="catalog-price">{owned ? 'Sudah ada di rak Anda' : `${formatRupiah(PACKAGES[0].price)} / ebook`}</div>
                 {isAdmin && (
                   <div className="catalog-admin">
-                    <button onClick={() => onEdit(item)} title="Ubah harga atau deskripsi"><Pencil size={13}/> Ubah</button>
+                    <button onClick={() => onEdit(item)} title="Ubah deskripsi"><Pencil size={13}/> Ubah</button>
                     <button onClick={() => onRemove(item)} title="Hapus dari katalog"><Trash2 size={13}/> Hapus</button>
                   </div>
                 )}
@@ -2896,6 +2940,7 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
         <div className="order-bar-info">
           <strong>{chosen.length} buku dipilih</strong>
           <span>Total {formatRupiah(total)}</span>
+          {order.hint && <small className="order-hint">💡 {order.hint}</small>}
         </div>
         <button className="order-clear" onClick={onClear}>Bersihkan</button>
         <button className="primary-button" onClick={onCheckout}><ShoppingBag size={17}/> Pesan &amp; Bayar</button>
@@ -2907,10 +2952,12 @@ function CatalogSection({ items, loading, error, ownedIds, selected, onToggle, i
 function CheckoutModal({ items, email, onClose, onConfirmed }) {
   const [code] = useState(() => `RB-${Date.now().toString(36).toUpperCase()}`);
   const [qrisOk, setQrisOk] = useState(true);
-  const total = items.reduce((a, b) => a + Number(b.price || 0), 0);
+  const order = calcOrder(items.length);
+  const total = order.total;
   const wa = normalizeWa(import.meta.env.VITE_ADMIN_WHATSAPP);
-  const lines = items.map((it, i) => `${i + 1}. ${it.title} - ${formatRupiah(it.price)}`).join('\n');
-  const text = `Halo Admin Ruang Baca, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
+  const lines = items.map((it, i) => `${i + 1}. ${it.title}`).join('\n');
+  const breakdown = order.parts.map(pt => `${pt.count}x ${pt.label} = ${formatRupiah(pt.count * pt.price)}`).join('\n');
+  const text = `Halo Admin Ruang Baca, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nRincian:\n${breakdown}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
   const link = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(text)}` : null;
   const qrisSrc = `${import.meta.env.BASE_URL}qris.png`;
 
@@ -2924,7 +2971,10 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
       <div className="checkout-code">Kode pesanan <b>{code}</b></div>
       <div className="checkout-items">
         {items.map(it => (
-          <div className="checkout-row" key={it.id}><span title={it.title}>{it.title}</span><b>{formatRupiah(it.price)}</b></div>
+          <div className="checkout-row" key={it.id}><span title={it.title}>{it.title}</span></div>
+        ))}
+        {order.parts.map(pt => (
+          <div className="checkout-row part" key={pt.qty}><span>{pt.count}× {pt.label}</span><b>{formatRupiah(pt.count * pt.price)}</b></div>
         ))}
         <div className="checkout-row total"><span>Total bayar</span><b>{formatRupiah(total)}</b></div>
       </div>
@@ -2954,7 +3004,6 @@ function CheckoutModal({ items, email, onClose, onConfirmed }) {
 function CatalogEditorModal({ books, existingIds, editing, onSave, onClose }) {
   const [picked, setPicked] = useState(null);
   const [q, setQ] = useState('');
-  const [price, setPrice] = useState(editing ? String(editing.price ?? 0) : '');
   const [desc, setDesc] = useState(editing?.description || '');
   const [busy, setBusy] = useState(false);
   const target = editing ? (books.find(b => b.id === editing.book_id) || { id: editing.book_id, title: editing.title, author: editing.author }) : picked;
@@ -2964,7 +3013,7 @@ function CatalogEditorModal({ books, existingIds, editing, onSave, onClose }) {
     e.preventDefault();
     if (!target) return;
     setBusy(true);
-    await onSave({ book: target, item: editing, price: Math.max(0, parseInt(price || '0', 10) || 0), description: desc.trim() });
+    await onSave({ book: target, item: editing, description: desc.trim() });
     setBusy(false);
   };
 
@@ -2991,11 +3040,9 @@ function CatalogEditorModal({ books, existingIds, editing, onSave, onClose }) {
       ) : (
         <form onSubmit={submit} className="modal-form">
           <p className="access-book-title">{target.title}</p>
-          <label>Harga (Rupiah)
-            <input type="number" min="0" step="500" inputMode="numeric" value={price} onChange={e => setPrice(e.target.value)} placeholder="contoh: 35000" required autoFocus/>
-          </label>
+          <p className="access-book-title" style={{whiteSpace:'normal'}}>Harga mengikuti aturan paket: {PACKAGES.map(pk => `${pk.label} ${formatRupiah(pk.price)}`).join(' · ')}</p>
           <label>Deskripsi singkat (opsional)
-            <input type="text" maxLength={160} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Sinopsis satu kalimat"/>
+            <input type="text" maxLength={160} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Sinopsis satu kalimat" autoFocus/>
           </label>
           <button type="submit" className="primary-button" disabled={busy}>
             {busy ? <LoaderCircle size={16} className="spin"/> : null}{busy ? 'Menyimpan…' : 'Simpan ke katalog'}
