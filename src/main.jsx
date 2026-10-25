@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList, Smartphone
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Smartphone, Upload
 } from 'lucide-react';
 
 const APK_URL = 'https://drive.google.com/file/d/1hRqyKylrdPNaErseHJrM8Ow_PEu2FKBJ/view?usp=drive_link';
@@ -287,6 +287,32 @@ const extractCoverFromBook = async (book) => {
     return null;
   }
 };
+
+// Bukti bayar: disimpan sementara di bucket privat, dihapus admin setelah pesanan diproses
+const PROOF_BUCKET = 'payment-proofs';
+const proofPath = code => `${code}.jpg`;
+const deleteProof = async code => {
+  try { await supabase.storage.from(PROOF_BUCKET).remove([proofPath(code)]); } catch {}
+};
+// Perkecil foto bukti bayar (maks 1400px, JPEG) agar unggahan ringan
+const compressProof = (file, maxSide = 1400, quality = 0.75) => new Promise((resolve, reject) => {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * scale);
+    c.height = Math.round(img.height * scale);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    c.toBlob(b => b ? resolve(b) : reject(new Error('Gagal memproses gambar')), 'image/jpeg', quality);
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('File bukan gambar yang valid')); };
+  img.src = url;
+});
 
 const palette = [
   ['#dce8e1', '#284a3c'], ['#f3dfce', '#70412e'], ['#dce4f5', '#344b7a'],
@@ -1002,7 +1028,12 @@ function App() {
   // Pengguna baru (belum punya buku selain contoh): arahkan perhatian ke tab Katalog
   const nudgeCatalog = !isAdmin && booksLoaded && !loadingBooks && tab !== 'catalog' && !books.some(b => !b.is_sample);
 
-  const submitOrder = async ({ code, total, ids }) => {
+  const submitOrder = async ({ code, total, ids, proof }) => {
+    // Bukti bayar diunggah lebih dulu (nama file = kode pesanan), baru pesanan dicatat
+    if (proof) {
+      const { error: upError } = await supabase.storage.from(PROOF_BUCKET).upload(proofPath(code), proof, { contentType: 'image/jpeg', upsert: false });
+      if (upError) { notify(`Gagal mengunggah bukti bayar: ${upError.message}`, 'error'); return { ok: false }; }
+    }
     const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
     if (error) { notify(error.message || 'Gagal membuat pesanan.', 'error'); return { ok: false }; }
     setCatalogSelected([]);
@@ -1014,6 +1045,7 @@ function App() {
     if (!window.confirm(`Terima pesanan ${o.code} dan buka kunci ${(o.order_items || []).length} buku untuk ${o.user_email}?`)) return;
     const { error } = await supabase.rpc('approve_order', { p_order_id: o.id });
     if (error) { notify(error.message || 'Gagal menerima pesanan.', 'error'); return; }
+    deleteProof(o.code);
     notify('Pesanan diterima. Buku sudah masuk ke rak pembeli.');
     loadOrders();
   };
@@ -1022,6 +1054,7 @@ function App() {
     if (!window.confirm(`Tolak pesanan ${o.code} dari ${o.user_email}?`)) return;
     const { error } = await supabase.rpc('reject_order', { p_order_id: o.id });
     if (error) { notify(error.message || 'Gagal menolak pesanan.', 'error'); return; }
+    deleteProof(o.code);
     notify('Pesanan ditolak.');
     loadOrders();
   };
@@ -1309,7 +1342,7 @@ function App() {
           onSubmit={submitOrder}
           onConfirmed={() => {
             setCheckoutOpen(false);
-            notify('Pesanan tercatat. Lanjutkan konfirmasi di WhatsApp, admin akan menerima pesananmu.');
+            notify('Pesanan terkirim. Admin akan memeriksa bukti bayarmu dan membuka kunci buku.');
           }}
         />
       )}
@@ -2996,7 +3029,6 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
 // Dua buku dianggap sama hanya jika judul, penulis, dan ukuran file sama (versi/edisi berbeda tetap terpisah)
 const bookKey = (title, author, size) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}|${Number(size || 0)}`;
 const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
-const ADMIN_WHATSAPP = '6285155228041'; // nomor WhatsApp admin untuk konfirmasi pembayaran
 const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
 
 // Aturan harga: 1 ebook = Rp5.000 | Paket 3 ebook = Rp10.000 | Paket 10 ebook = Rp30.000
@@ -3034,13 +3066,6 @@ const calcOrder = n => {
   return { total, parts, hint };
 };
 
-const normalizeWa = raw => {
-  let d = String(raw || '').replace(/\D/g, '');
-  if (!d) return '';
-  if (d.startsWith('0')) d = `62${d.slice(1)}`;
-  return d;
-};
-
 // Perkecil sampul menjadi thumbnail JPEG kecil untuk katalog
 const makeThumb = (src, width = 200) => new Promise(resolve => {
   if (!src) { resolve(null); return; }
@@ -3063,6 +3088,13 @@ const ORDER_STATUS = { pending: 'Menunggu', approved: 'Diterima', rejected: 'Dit
 
 function OrdersSection({ orders, onApprove, onReject }) {
   const [showHistory, setShowHistory] = useState(false);
+  const [proofView, setProofView] = useState(null); // { code, url, loading, error }
+  const viewProof = async o => {
+    setProofView({ code: o.code, loading: true });
+    const { data, error } = await supabase.storage.from(PROOF_BUCKET).createSignedUrl(proofPath(o.code), 300);
+    if (error || !data?.signedUrl) setProofView({ code: o.code, error: 'Bukti bayar tidak ditemukan. Pesanan ini mungkin dibuat sebelum fitur unggah bukti ada, atau buyer belum mengunggah. Silakan hubungi pembeli untuk meminta bukti.' });
+    else setProofView({ code: o.code, url: data.signedUrl });
+  };
   const pending = orders.filter(o => o.status === 'pending');
   const history = orders.filter(o => o.status !== 'pending');
   const fmt = iso => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
@@ -3081,6 +3113,7 @@ function OrdersSection({ orders, onApprove, onReject }) {
         <span className="order-total">{formatRupiah(o.total)}</span>
         {o.status === 'pending' && (
           <div className="order-actions">
+            <button className="order-proof" onClick={() => viewProof(o)}><Eye size={15}/> Lihat bukti</button>
             <button className="order-reject" onClick={() => onReject(o)}>Tolak</button>
             <button className="primary-button" onClick={() => onApprove(o)}><Check size={16}/> Terima</button>
           </div>
@@ -3093,7 +3126,21 @@ function OrdersSection({ orders, onApprove, onReject }) {
     <div className="section-heading">
       <div><div className="eyebrow muted">PESANAN MASUK</div><h2>Pesanan <span className="count">{pending.length}</span></h2></div>
     </div>
-    <p className="catalog-note">Cek bukti bayar di WhatsApp, lalu klik <b>Terima</b>. Semua buku dalam pesanan otomatis masuk ke rak pembeli.</p>
+    <p className="catalog-note">Cek bukti bayar lewat tombol <b>Lihat bukti</b>, lalu klik <b>Terima</b>. Semua buku dalam pesanan otomatis masuk ke rak pembeli. Foto bukti dihapus otomatis setelah pesanan diterima atau ditolak.</p>
+
+    {proofView && (
+      <div className="modal-backdrop" onClick={() => setProofView(null)}>
+        <div className="modal-card proof-modal" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <div className="modal-title"><Eye size={18} className="modal-icon-teal"/><span>Bukti bayar {proofView.code}</span></div>
+            <button className="modal-close-btn" onClick={() => setProofView(null)} title="Tutup"><X size={18}/></button>
+          </div>
+          {proofView.loading && <div className="proof-loading"><LoaderCircle size={22} className="spin"/></div>}
+          {proofView.error && <div className="info-banner">{proofView.error}</div>}
+          {proofView.url && <img className="proof-full" src={proofView.url} alt="Bukti bayar"/>}
+        </div>
+      </div>
+    )}
 
     {pending.length === 0 ? (
       <div className="catalog-empty">
@@ -3242,23 +3289,41 @@ function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
   const [code] = useState(() => `RB-${Date.now().toString(36).toUpperCase()}`);
   const [busy, setBusy] = useState(false);
   const [qrisOk, setQrisOk] = useState(true);
+  const [proof, setProof] = useState(null);       // Blob JPEG hasil kompresi
+  const [proofUrl, setProofUrl] = useState('');   // URL pratinjau
+  const [proofErr, setProofErr] = useState('');
+  const [proofBusy, setProofBusy] = useState(false);
+  const sendingRef = useRef(false);
+  useEffect(() => () => { if (proofUrl) URL.revokeObjectURL(proofUrl); }, [proofUrl]);
+  const pickProof = async e => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setProofErr('');
+    if (!f.type.startsWith('image/')) { setProofErr('Pilih file berupa gambar (foto atau tangkapan layar).'); return; }
+    setProofBusy(true);
+    try {
+      const blob = await compressProof(f);
+      setProof(blob);
+      setProofUrl(URL.createObjectURL(blob));
+    } catch (err) {
+      setProofErr(err.message || 'Gambar tidak dapat diproses.');
+    }
+    setProofBusy(false);
+  };
   const order = calcOrder(items.length);
   const total = order.total;
-  const wa = normalizeWa(ADMIN_WHATSAPP);
-  const lines = items.map((it, i) => `${i + 1}. ${it.title}`).join('\n');
-  const breakdown = order.parts.map(pt => `${pt.count}x ${pt.label} = ${formatRupiah(pt.count * pt.price)}`).join('\n');
-  const text = `Halo Admin Ruang Bacaan, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nRincian:\n${breakdown}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
-  const link = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(text)}` : null;
   const qrisSrc = `${import.meta.env.BASE_URL}qris.png`;
 
   const confirmPayment = async () => {
-    if (!link || busy) return;
+    // Kunci instan (ref) agar klik ganda secepat apa pun hanya mengirim satu pesanan
+    if (sendingRef.current || busy || !proof) return;
+    sendingRef.current = true;
     setBusy(true);
-    const w = window.open('about:blank', '_blank');
-    const res = await onSubmit({ code, total, ids: items.map(i => i.book_id) });
-    setBusy(false);
-    if (!res.ok) { try { w && w.close(); } catch {} return; }
-    if (w) w.location.href = link; else window.location.href = link;
+    let res = { ok: false };
+    try { res = await onSubmit({ code, total, ids: items.map(i => i.book_id), proof }); } catch {}
+    if (!res.ok) { sendingRef.current = false; setBusy(false); return; }
+    // Sukses: kunci tetap terpasang, jendela ditutup
     onConfirmed();
   };
 
@@ -3284,22 +3349,35 @@ function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
         <div className="qris-name"><span>Atas nama</span><b>{QRIS_NAME}</b></div>
         {qrisOk
           ? <img src={qrisSrc} alt="QRIS pembayaran" onError={() => setQrisOk(false)}/>
-          : <div className="qris-missing">Gambar QRIS belum dipasang. Hubungi admin lewat WhatsApp untuk mendapatkan kode pembayaran.</div>}
+          : <div className="qris-missing">Gambar QRIS belum dipasang. Silakan coba lagi nanti atau hubungi admin.</div>}
         <div className="qris-caption">Scan dengan aplikasi e-wallet atau mobile banking</div>
       </div>
 
       <ol className="checkout-steps">
         <li>Scan QRIS di atas dan bayar sesuai <b>total</b>.</li>
-        <li>Setelah berhasil, tekan tombol konfirmasi WhatsApp di bawah dan kirim bukti bayar.</li>
+        <li>Setelah berhasil, unggah foto atau tangkapan layar <b>bukti bayar</b> di bawah.</li>
+        <li>Tekan tombol konfirmasi untuk mengirim pesanan ke admin.</li>
         <li>Admin akan memeriksa dan membuka kunci buku di akun <b>{email}</b>.</li>
       </ol>
 
-      {link
-        ? <button className="primary-button wa-button" onClick={confirmPayment} disabled={busy}>
-            {busy ? <LoaderCircle size={18} className="spin"/> : <MessageCircle size={18}/>}
-            {busy ? 'Mencatat pesanan…' : 'Saya sudah bayar — Konfirmasi via WhatsApp'}
-          </button>
-        : <div className="info-banner">Nomor WhatsApp admin belum diatur.</div>}
+      <div className="proof-box">
+        <label className={`proof-pick${proof ? ' has' : ''}`}>
+          <input type="file" accept="image/*" onChange={pickProof} disabled={busy || proofBusy} hidden/>
+          {proofBusy
+            ? <><LoaderCircle size={17} className="spin"/> Memproses gambar…</>
+            : proof
+              ? <><Check size={17}/> Bukti bayar dipilih. Ketuk untuk mengganti</>
+              : <><Upload size={17}/> Unggah bukti bayar</>}
+        </label>
+        {proofUrl && <img className="proof-preview" src={proofUrl} alt="Pratinjau bukti bayar"/>}
+        {proofErr && <div className="proof-error">{proofErr}</div>}
+        <div className="proof-note">Foto hanya dipakai admin untuk memeriksa pembayaran dan otomatis dihapus setelah pesanan diproses.</div>
+      </div>
+
+      <button className="primary-button pay-button" onClick={confirmPayment} disabled={busy || !proof}>
+        {busy ? <LoaderCircle size={18} className="spin"/> : <Check size={18}/>}
+        {busy ? 'Mengirim pesanan…' : proof ? 'Saya sudah bayar' : 'Unggah bukti bayar untuk melanjutkan'}
+      </button>
     </div>
   </div>;
 }
