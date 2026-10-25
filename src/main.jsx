@@ -1079,7 +1079,7 @@ function App() {
   }, [orderedBooks, query, sortMode]);
 
   if (!supabase) return <SetupMissing />;
-  if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Baca…</span></div>;
+  if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Bacaan…</span></div>;
   if (recovering && session) return <ResetPasswordScreen theme={theme} setTheme={setTheme} onDone={() => {
     setRecovering(false);
     try { window.history.replaceState(null, '', window.location.pathname); } catch {}
@@ -1092,7 +1092,7 @@ function App() {
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark"><BookOpen size={22}/></div>
-          <div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div>
+          <div><div className="brand-name">ruang bacaan</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div>
         </div>
         <div className="top-actions">
           <span className="account-email">{session.user.email}</span>
@@ -1260,14 +1260,14 @@ function App() {
           {tab === 'app' && showAppTab && (
             <section className="app-dl">
               <div className="app-dl-icon"><Smartphone size={30}/></div>
-              <h2>Ruang Baca untuk Android</h2>
+              <h2>Ruang Bacaan untuk Android</h2>
               <p>Baca koleksi ebook-mu langsung dari HP lewat aplikasi, tanpa membuka browser. Akun dan buku yang sudah kamu beli akan sama persis.</p>
               <a className="app-dl-btn" href={APK_URL} target="_blank" rel="noopener noreferrer"><Download size={18}/> Unduh Aplikasi (APK)</a>
               <ol className="app-dl-steps">
                 <li>Ketuk tombol di atas, lalu pilih Unduh di halaman Google Drive.</li>
                 <li>Buka file APK yang sudah terunduh.</li>
                 <li>Jika diminta, izinkan pemasangan dari sumber ini di pengaturan HP, lalu pasang.</li>
-                <li>Buka Ruang Baca dan masuk dengan akun yang sama.</li>
+                <li>Buka Ruang Bacaan dan masuk dengan akun yang sama.</li>
               </ol>
             </section>
           )}
@@ -1422,7 +1422,7 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
         </div>
       ) : (
         <div className="book-cover" style={{'--cover-bg': colors[0], '--cover-ink': colors[1]}}>
-          <div className="cover-topline">RUANG BACA · E-BOOK</div>
+          <div className="cover-topline">RUANG BACAAN · E-BOOK</div>
           <div className="cover-decoration"><span></span><span></span><span></span></div>
           <div className="cover-title">{book.title}</div>
           <div className="cover-author">{book.author}</div>
@@ -2884,7 +2884,7 @@ function AuthScreen(props) {
   return <main className="auth-page">
     <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
     <div className="auth-card">
-      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
+      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang bacaan</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
       <div className="auth-illustration"><div className="auth-orbit"></div><div className="auth-book"><BookOpen size={43}/></div></div>
       <div className="eyebrow muted">PERPUSTAKAAN DIGITAL ANDA</div>
       <h1>{authMode === 'login' ? 'Senang melihat Anda kembali.' : authMode === 'forgot' ? 'Lupa kata sandi?' : 'Mulai bangun rak buku Anda.'}</h1>
@@ -2911,7 +2911,7 @@ function AuthScreen(props) {
           </div>
         )}
         {authMessage && <div className="auth-message"><AlertCircle size={16}/>{authMessage}</div>}
-        <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Baca' : authMode === 'forgot' ? 'Kirim tautan reset' : 'Buat akun'}</button>
+        <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Bacaan' : authMode === 'forgot' ? 'Kirim tautan reset' : 'Buat akun'}</button>
       </form>
       {authMode === 'forgot' ? (
         <div className="auth-switch"><button onClick={() => { setAuthMessage(''); setAuthMode('login'); }}>Kembali ke halaman masuk</button></div>
@@ -2945,7 +2945,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
   return <main className="auth-page">
     <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
     <div className="auth-card">
-      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
+      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang bacaan</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
       <div className="eyebrow muted">ATUR ULANG KATA SANDI</div>
       <h1>Buat kata sandi baru.</h1>
       <p className="auth-subtitle">Masukkan kata sandi baru untuk akun Anda.</p>
@@ -3224,7 +3224,7 @@ function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
   const wa = normalizeWa(ADMIN_WHATSAPP);
   const lines = items.map((it, i) => `${i + 1}. ${it.title}`).join('\n');
   const breakdown = order.parts.map(pt => `${pt.count}x ${pt.label} = ${formatRupiah(pt.count * pt.price)}`).join('\n');
-  const text = `Halo Admin Ruang Baca, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nRincian:\n${breakdown}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
+  const text = `Halo Admin Ruang Bacaan, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nRincian:\n${breakdown}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
   const link = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(text)}` : null;
   const qrisSrc = `${import.meta.env.BASE_URL}qris.png`;
 
@@ -3282,7 +3282,7 @@ function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
 }
 
 function SetupMissing() {
-  return <main className="setup-page"><div className="setup-card"><div className="brand-mark"><BookOpen size={22}/></div><h1>Hubungkan Ruang Baca ke Supabase</h1><p>Aplikasi hampir siap. Isi URL dan key Supabase di file <code>.env</code>, lalu jalankan ulang server.</p><ol><li>Buat proyek Supabase.</li><li>Salin <code>.env.example</code> menjadi <code>.env</code>.</li><li>Isi <code>VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code>.</li><li>Jalankan kembali <code>npm run dev</code>.</li></ol></div></main>;
+  return <main className="setup-page"><div className="setup-card"><div className="brand-mark"><BookOpen size={22}/></div><h1>Hubungkan Ruang Bacaan ke Supabase</h1><p>Aplikasi hampir siap. Isi URL dan key Supabase di file <code>.env</code>, lalu jalankan ulang server.</p><ol><li>Buat proyek Supabase.</li><li>Salin <code>.env.example</code> menjadi <code>.env</code>.</li><li>Isi <code>VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code>.</li><li>Jalankan kembali <code>npm run dev</code>.</li></ol></div></main>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
