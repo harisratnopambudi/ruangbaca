@@ -1,0 +1,21 @@
+# Ruang Baca
+
+> Ruang Baca adalah aplikasi web untuk membaca dan membeli ebook EPUB berbahasa Indonesia. Pengguna punya rak buku pribadi, progres baca tersinkron di cloud antarperangkat, serta bookmark dan stabilo. Dikelola oleh Haris DevLab.
+
+## Ringkasan
+- URL: https://harisdevlab.online/ruangbaca/
+- Bahasa: Indonesia
+- Format buku: EPUB (tanpa DRM)
+- Platform: web, berjalan di browser HP, tablet, dan komputer
+- Harga ebook di katalog: mulai Rp5.000 per ebook; paket hemat 3 ebook dan 10 ebook
+- Pembayaran: QRIS, dikonfirmasi admin, buku langsung masuk ke rak pembeli
+
+## Fitur
+- Pembaca EPUB dengan mode paginasi, scroll, dan dua halaman
+- Tema terang, sepia, gelap; pilihan jenis huruf, ukuran teks, jarak baris, margin
+- Bookmark dan stabilo enam warna
+- Sinkronisasi progres baca di semua perangkat
+- Unggah EPUB sendiri (terbuka setelah membeli ebook di katalog)
+
+## Catatan
+- Isi katalog dan rak buku hanya tampil setelah login.

@@ -1,0 +1,22 @@
+# Taruh salinan file ini di ROOT domain: https://harisdevlab.online/robots.txt
+# (crawler hanya membaca robots.txt di root domain, bukan di /ruangbaca/)
+User-agent: *
+Allow: /
+
+Sitemap: https://harisdevlab.online/ruangbaca/sitemap.xml
+
+# Crawler AI diizinkan membaca halaman publik
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
