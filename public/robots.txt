@@ -1,9 +1,8 @@
-# Taruh salinan file ini di ROOT domain: https://harisdevlab.online/robots.txt
-# (crawler hanya membaca robots.txt di root domain, bukan di /ruangbaca/)
+# robots.txt untuk https://ruangbacaan.my.id/ (sudah berada di root domain, jadi langsung terbaca crawler)
 User-agent: *
 Allow: /
 
-Sitemap: https://harisdevlab.online/ruangbaca/sitemap.xml
+Sitemap: https://ruangbacaan.my.id/sitemap.xml
 
 # Crawler AI diizinkan membaca halaman publik
 User-agent: GPTBot
