@@ -1260,9 +1260,22 @@ function App() {
           {tab === 'app' && showAppTab && (
             <section className="app-dl">
               <div className="app-dl-icon"><Smartphone size={30}/></div>
+              <span className="app-dl-badge">Pembaruan besar</span>
               <h2>Ruang Bacaan untuk Android</h2>
               <p>Baca koleksi ebook-mu langsung dari HP lewat aplikasi, tanpa membuka browser. Akun dan buku yang sudah kamu beli akan sama persis.</p>
               <a className="app-dl-btn" href={APK_URL} target="_blank" rel="noopener noreferrer"><Download size={18}/> Unduh Aplikasi (APK)</a>
+              <div className="app-dl-log">
+                <h3>Yang baru di versi ini</h3>
+                <ul>
+                  <li><strong>Nama baru: Ruang Bacaan.</strong> Ruang Baca resmi berganti nama menjadi Ruang Bacaan.</li>
+                  <li><strong>Alamat baru:</strong> ruangbacaan.my.id. Aplikasi versi lama sebaiknya diganti dengan versi ini.</li>
+                  <li><strong>Layar tidak mati sendiri</strong> saat kamu sedang membaca.</li>
+                  <li><strong>Sampul buku tampil jauh lebih cepat</strong> saat pertama kali membuka rak.</li>
+                  <li><strong>Katalog lebih lengkap:</strong> terurut berdasarkan penulis, dan edisi berbeda dari judul yang sama kini tampil terpisah.</li>
+                  <li><strong>Tampilan dan performa</strong> diperbarui di seluruh aplikasi.</li>
+                </ul>
+                <p className="app-dl-note">Pasang versi baru di atas versi lama. Akun, buku, dan progres bacamu tetap aman.</p>
+              </div>
               <ol className="app-dl-steps">
                 <li>Ketuk tombol di atas, lalu pilih Unduh di halaman Google Drive.</li>
                 <li>Buka file APK yang sudah terunduh.</li>
