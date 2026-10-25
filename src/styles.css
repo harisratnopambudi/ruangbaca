@@ -551,3 +551,10 @@ body.is-dragging-card *{cursor:grabbing !important}
 .proof-full{display:block;width:100%;max-height:70vh;object-fit:contain;border-radius:12px;background:#f1f1ee}
 .proof-loading{display:grid;place-items:center;padding:50px 0}
 .pay-button{width:100%;justify-content:center;gap:8px}
+
+/* Kartu pesanan admin: total di atas, tombol tersusun rapi di bawah */
+.order-card-foot{flex-direction:column;align-items:stretch;gap:12px}
+.order-total{white-space:nowrap;font-size:18px}
+.order-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.order-actions button{white-space:nowrap;justify-content:center;display:inline-flex;align-items:center;gap:6px;min-height:42px}
+.order-actions .order-proof{grid-column:1 / -1}
