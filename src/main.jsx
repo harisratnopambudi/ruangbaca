@@ -877,7 +877,7 @@ function App() {
     setCatalogLoading(false);
     if (error) { setCatalogError(error.message || 'gagal memuat'); return; }
     const items = (data || []).map(r => ({
-      id: r.book_id, book_id: r.book_id, title: r.title, author: r.author, cover_data: r.cover_thumb
+      id: r.book_id, book_id: r.book_id, title: r.title, author: r.author, file_size: r.file_size, cover_data: r.cover_thumb
     }));
     setCatalogError('');
     setCatalogItems(items);
@@ -1226,7 +1226,7 @@ function App() {
               loading={catalogLoading}
               error={catalogError}
               ownedIds={new Set(books.map(b => b.id))}
-              ownedKeys={new Set(books.map(b => bookKey(b.title, b.author)))}
+              ownedKeys={new Set(books.map(b => bookKey(b.title, b.author, b.file_size)))}
               selected={catalogSelected}
               onToggle={toggleCatalogSelect}
               isAdmin={isAdmin}
@@ -1244,7 +1244,7 @@ function App() {
 
       {checkoutOpen && (
         <CheckoutModal
-          items={catalogItems.filter(i => catalogSelected.includes(i.id) && !books.some(b => b.id === i.book_id || bookKey(b.title, b.author) === bookKey(i.title, i.author)))}
+          items={catalogItems.filter(i => catalogSelected.includes(i.id) && !books.some(b => b.id === i.book_id || bookKey(b.title, b.author, b.file_size) === bookKey(i.title, i.author, i.file_size)))}
           email={session?.user?.email || ''}
           onClose={() => setCheckoutOpen(false)}
           onSubmit={submitOrder}
@@ -2913,7 +2913,8 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
   </main>;
 }
 
-const bookKey = (title, author) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}`;
+// Dua buku dianggap sama hanya jika judul, penulis, dan ukuran file sama (versi/edisi berbeda tetap terpisah)
+const bookKey = (title, author, size) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}|${Number(size || 0)}`;
 const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
 const ADMIN_WHATSAPP = '6285155228041'; // nomor WhatsApp admin untuk konfirmasi pembayaran
 const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
@@ -3051,7 +3052,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
   const list = items
     .filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => cmpText(a.author, b.author) || cmpText(a.title, b.title));
-  const isOwned = i => ownedIds.has(i.book_id) || ownedKeys.has(bookKey(i.title, i.author));
+  const isOwned = i => ownedIds.has(i.book_id) || ownedKeys.has(bookKey(i.title, i.author, i.file_size));
   const chosen = items.filter(i => selected.includes(i.id) && !isOwned(i));
   const order = calcOrder(chosen.length);
   const total = order.total;
