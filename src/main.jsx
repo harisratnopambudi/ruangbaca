@@ -881,6 +881,16 @@ function App() {
 
   // ---------- Katalog otomatis & pemesanan ----------
   const [tab, setTab] = useState('shelf');
+  // Naikkan APP_VERSION setiap ada APK baru agar label "Update" berkedip lagi untuk semua pengguna
+  const APP_VERSION = '2';
+  const [appSeen, setAppSeen] = useState(() => {
+    try { return localStorage.getItem('rb_app_seen') === APP_VERSION; } catch { return false; }
+  });
+  const openAppTab = () => {
+    setTab('app');
+    setAppSeen(true);
+    try { localStorage.setItem('rb_app_seen', APP_VERSION); } catch {}
+  };
   const [catalogItems, setCatalogItems] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState('');
@@ -1154,7 +1164,7 @@ function App() {
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
             <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
             {showAppTab && (
-              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={() => setTab('app')}><Smartphone size={16}/> Aplikasi Android</button>
+              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><Smartphone size={16}/> Aplikasi Android{!appSeen && <span className="tab-badge tab-badge-update">Update</span>}</button>
             )}
             {isAdmin && (
               <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
