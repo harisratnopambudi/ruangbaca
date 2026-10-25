@@ -7,8 +7,10 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList, Smartphone
 } from 'lucide-react';
+
+const APK_URL = 'https://drive.google.com/file/d/1IiiZxeLQ9gFad6LeSgNNsWgfXoXaFMMu/view?usp=sharing';
 import './styles.css';
 
 const FONT_FAMILIES = [
@@ -822,6 +824,7 @@ function App() {
   const [accessBusy, setAccessBusy] = useState(false);
   const [accessInput, setAccessInput] = useState('');
   const canUpload = isAdmin || books.some(b => b.user_id !== userId && !b.is_sample);
+  const showAppTab = isAdmin || books.some(b => !b.is_sample);
 
   useEffect(() => {
     let alive = true;
@@ -1150,6 +1153,9 @@ function App() {
           <div className="tabs-bar" role="tablist">
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
             <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
+            {showAppTab && (
+              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={() => setTab('app')}><Smartphone size={16}/> Aplikasi Android</button>
+            )}
             {isAdmin && (
               <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
                 <ClipboardList size={16}/> Pesanan{pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
@@ -1249,6 +1255,21 @@ function App() {
               onCheckout={() => setCheckoutOpen(true)}
               onClear={() => setCatalogSelected([])}
             />
+          )}
+
+          {tab === 'app' && showAppTab && (
+            <section className="app-dl">
+              <div className="app-dl-icon"><Smartphone size={30}/></div>
+              <h2>Ruang Baca untuk Android</h2>
+              <p>Baca koleksi ebook-mu langsung dari HP lewat aplikasi, tanpa membuka browser. Akun dan buku yang sudah kamu beli akan sama persis.</p>
+              <a className="app-dl-btn" href={APK_URL} target="_blank" rel="noopener noreferrer"><Download size={18}/> Unduh Aplikasi (APK)</a>
+              <ol className="app-dl-steps">
+                <li>Ketuk tombol di atas, lalu pilih Unduh di halaman Google Drive.</li>
+                <li>Buka file APK yang sudah terunduh.</li>
+                <li>Jika diminta, izinkan pemasangan dari sumber ini di pengaturan HP, lalu pasang.</li>
+                <li>Buka Ruang Baca dan masuk dengan akun yang sama.</li>
+              </ol>
+            </section>
           )}
 
           {tab === 'orders' && isAdmin && (
