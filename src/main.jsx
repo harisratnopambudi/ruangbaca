@@ -447,7 +447,7 @@ function App() {
   const processFiles = async (fileList) => {
     const rawFiles = Array.from(fileList || []);
     if (!rawFiles.length) return;
-    if (!canUpload) { notify('Hubungi admin untuk mendapatkan akses buku terlebih dahulu. Setelah ada buku yang dibagikan, kamu bisa menambah EPUB sendiri.', 'error'); return; }
+    if (!canUpload) { notify('Beli ebook di tab Katalog terlebih dahulu untuk membuka fitur menambah EPUB sendiri.', 'error'); return; }
 
     const epubFiles = rawFiles.filter(f => f.name.toLowerCase().endsWith('.epub'));
     if (!epubFiles.length) {
@@ -534,7 +534,7 @@ function App() {
 
   const onAddBookClick = () => {
     if (!canUpload) {
-      notify('Kamu belum punya buku yang dibagikan. Hubungi admin untuk mendapatkan akses buku terlebih dahulu.', 'error');
+      notify('Fitur tambah buku terbuka setelah kamu membeli ebook di tab Katalog.', 'error');
       return;
     }
     fileInput.current?.click();
@@ -1181,13 +1181,13 @@ function App() {
               <div className="empty-state">
                 <div className="empty-icon"><BookMarked size={27}/></div>
                 <h3>{query ? 'Buku tidak ditemukan' : 'Rak buku masih kosong'}</h3>
-                <p>{query ? 'Coba kata kunci yang berbeda.' : canUpload ? 'Unggah file EPUB Anda. Anda bisa memilih banyak file sekaligus atau menyeretnya ke sini.' : 'Hubungi admin untuk mendapatkan akses buku. Buku yang dibagikan admin akan muncul di sini.'}</p>
+                <p>{query ? 'Coba kata kunci yang berbeda.' : canUpload ? 'Unggah file EPUB Anda. Anda bisa memilih banyak file sekaligus atau menyeretnya ke sini.' : 'Beli ebook di tab Katalog. Buku yang sudah dibeli akan muncul di sini.'}</p>
                 {!query && <button className="secondary-button" onClick={onAddBookClick} disabled={uploadBusy}><UploadCloud size={17}/> {uploadBusy ? 'Mengunggah…' : 'Unggah EPUB (Bisa Banyak)'}</button>}
               </div>
              ) : (
               <>
               {!isAdmin && !canUpload && books.length > 0 && (
-                <p className="info-banner">Kamu baru memiliki buku contoh. Hubungi admin untuk mendapatkan akses buku lainnya dan fitur menambah buku sendiri.</p>
+                <p className="info-banner">Kamu baru memiliki buku contoh. Beli ebook di tab Katalog untuk membuka fitur menambah buku sendiri.</p>
               )}
               {!query && sortMode === 'manual' && filteredBooks.length > 1 && <p className="drag-hint">Tahan lalu geser sampul untuk mengatur urutan buku.</p>}
               <div className="book-grid">
