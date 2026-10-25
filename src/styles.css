@@ -1,514 +1,3230 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap');
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import ePub from 'epubjs';
+import { createClient } from '@supabase/supabase-js';
+import {
+  BookOpen, Plus, Search, Sun, Moon, LogOut, UploadCloud, Trash2,
+  ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
+  BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
+  SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList
+} from 'lucide-react';
+import './styles.css';
 
-:root{font-family:'DM Sans',sans-serif;color:#28312d;background:#f6f5f1;font-synthesis:none;text-rendering:optimizeLegibility;--bg:#f6f5f1;--surface:#fffefa;--surface-2:#f0efe9;--ink:#28312d;--muted:#777e77;--line:#e3e2da;--accent:#426c5b;--accent-strong:#315847;--accent-soft:#e4ece6;--shadow:0 18px 55px rgba(38,49,43,.07)}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#171c19;--surface:#202722;--surface-2:#29312b;--ink:#e9eee8;--muted:#a4ada5;--line:#364039;--accent:#9bc4ae;--accent-strong:#b8d8c4;--accent-soft:#2e4237;--shadow:0 18px 55px rgba(0,0,0,.2)}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);transition:background .2s,color .2s}button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.6;cursor:not-allowed}.app-shell{min-height:100vh}.topbar{height:82px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5.3vw,86px);background:var(--surface)}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;border-radius:13px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}.brand-name{font-family:'Playfair Display',serif;font-size:23px;letter-spacing:-.6px;font-weight:600;line-height:1.1}.brand-caption{font-size:9px;letter-spacing:1.7px;color:var(--muted);margin-top:5px;font-weight:700}.top-actions{display:flex;align-items:center;gap:12px}.account-email{font-size:12px;color:var(--muted);margin-right:8px;max-width:220px;overflow:hidden;text-overflow:ellipsis}.icon-button{height:40px;width:40px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;color:var(--ink);background:var(--surface);transition:.2s}.icon-button:hover,.icon-button.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}.library-main{max-width:1450px;margin:0 auto;padding:36px clamp(20px,5.3vw,86px) 54px}.hero{min-height:285px;background:#e9eee7;border-radius:22px;overflow:hidden;display:flex;position:relative;padding:42px clamp(26px,5vw,68px);color:#2c4035}.hero-copy{position:relative;z-index:2;max-width:520px}.eyebrow{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--accent);display:flex;align-items:center;gap:8px}.eyebrow.muted{color:var(--muted)}.hero h1,.auth-card h1{font-family:'Playfair Display',serif;font-weight:500;font-size:clamp(36px,4.3vw,56px);line-height:1.05;letter-spacing:-1.7px;margin:18px 0 14px}.hero h1 em{color:#63816d;font-weight:500}.hero-copy>p{font-size:14px;color:#66736a;line-height:1.7;margin:0;max-width:390px}.hero-foot{display:flex;gap:20px;flex-wrap:wrap;margin-top:28px;font-size:11px;color:#5e7365}.hero-foot span{display:flex;align-items:center;gap:6px}.hero-art{position:absolute;right:4%;top:0;width:43%;height:100%;min-width:300px;overflow:hidden}.art-sun{position:absolute;width:190px;height:190px;border-radius:50%;background:#d8dfc8;right:19%;top:26px}.art-line{position:absolute;width:400px;height:180px;border:1px solid rgba(67,98,77,.2);border-radius:50%;right:-6%;bottom:-96px;transform:rotate(-14deg)}.art-book{position:absolute;bottom:36px;border-radius:5px 9px 9px 5px;box-shadow:8px 10px 20px #334b3928;border-left:6px solid rgba(0,0,0,.1)}.book-one{height:160px;width:104px;background:#bc8b67;right:51%;transform:rotate(-12deg)}.book-two{height:193px;width:123px;background:#527865;right:30%;transform:rotate(5deg)}.book-three{height:145px;width:93px;background:#d3b9a0;right:10%;transform:rotate(15deg)}.shelf-section{margin-top:42px}.section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;margin-bottom:25px}.section-heading h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:500;letter-spacing:-.6px;margin:8px 0 0}.count{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;vertical-align:middle;background:var(--surface-2);padding:5px 9px;border-radius:8px;margin-left:5px;color:var(--muted)}.shelf-tools{display:flex;align-items:center;gap:10px}.searchbox{height:43px;min-width:230px;border:1px solid var(--line);background:var(--surface);border-radius:12px;display:flex;align-items:center;gap:9px;padding:0 13px;color:var(--muted)}.searchbox input{border:0;outline:0;background:transparent;color:var(--ink);width:100%;min-width:0;font-size:12px}.primary-button,.secondary-button{height:43px;border-radius:12px;padding:0 16px;border:1px solid var(--accent);background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:700;white-space:nowrap;transition:.2s}.primary-button:hover{background:var(--accent-strong)}.secondary-button{background:var(--surface);color:var(--accent);border-color:var(--line)}.secondary-button:hover{background:var(--accent-soft)}.book-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:28px 22px}.book-card{min-width:0}.cover-button{display:block;width:100%;border:0;background:transparent;padding:0;text-align:left;position:relative}.book-cover{aspect-ratio: .72;position:relative;overflow:hidden;border-radius:5px 12px 12px 5px;background:var(--cover-bg);color:var(--cover-ink);padding:18px 15px 15px;box-shadow:5px 8px 17px rgba(35,43,37,.12),inset 5px 0 rgba(0,0,0,.07);display:flex;flex-direction:column;border-left:5px solid rgba(0,0,0,.09);transition:transform .22s,box-shadow .22s}.cover-button:hover .book-cover{transform:translateY(-5px) rotate(-1deg);box-shadow:8px 15px 22px rgba(35,43,37,.18)}.book-cover-image-wrap{aspect-ratio:.72;position:relative;overflow:hidden;border-radius:5px 12px 12px 5px;background:var(--surface-2);box-shadow:5px 8px 17px rgba(35,43,37,.12),inset 5px 0 rgba(0,0,0,.07);border-left:5px solid rgba(0,0,0,.15);transition:transform .22s,box-shadow .22s;display:flex}.cover-button:hover .book-cover-image-wrap{transform:translateY(-5px) rotate(-1deg);box-shadow:8px 15px 22px rgba(35,43,37,.18)}.book-cover-img{width:100%;height:100%;object-fit:cover;display:block}.cover-topline{font-size:7px;letter-spacing:1.2px;font-weight:700;opacity:.72}.cover-decoration{position:relative;height:33%;margin:10px 0 8px;display:flex;align-items:center;justify-content:center;gap:4px}.cover-decoration span{width:25%;height:55%;border:1px solid currentColor;border-radius:50% 50% 4px 4px;opacity:.4;transform:rotate(-12deg)}.cover-decoration span:nth-child(2){height:85%;transform:rotate(8deg);opacity:.6}.cover-decoration span:nth-child(3){transform:rotate(17deg)}.cover-title{font-family:'Playfair Display',serif;font-weight:600;font-size:clamp(14px,1.4vw,21px);line-height:1.12;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.cover-author{font-size:10px;line-height:1.4;margin-top:9px;opacity:.8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cover-bottom{margin-top:auto;font-size:7px;letter-spacing:1.3px;font-weight:700;opacity:.7}.cover-open{position:absolute;inset:auto 9px 9px;display:flex;justify-content:center;align-items:center;gap:6px;background:#ffffffed;color:#2b4738;border-radius:9px;padding:10px 6px;font-size:11px;font-weight:700;opacity:0;transform:translateY(5px);transition:.2s}.cover-button:hover .cover-open{opacity:1;transform:translateY(0)}.book-details{padding:14px 2px 0}.book-title-row{display:flex;align-items:flex-start;gap:5px;justify-content:space-between}.book-title-row h3{font-size:13px;line-height:1.45;font-weight:700;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.delete-button{border:0;background:transparent;color:var(--muted);padding:2px;opacity:.65}.delete-button:hover{color:#bc5b52;opacity:1}.book-author{font-size:11px;color:var(--muted);margin:5px 0 11px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.book-meta{display:flex;justify-content:space-between;gap:8px;font-size:9px;color:var(--muted)}.progress-track{height:4px;background:var(--surface-2);border-radius:20px;overflow:hidden;margin-top:8px}.progress-track>span{height:100%;display:block;background:var(--accent);border-radius:20px;transition:width .3s}.empty-state{border:1px dashed var(--line);border-radius:18px;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}.empty-icon{width:54px;height:54px;border-radius:17px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}.empty-state h3{font-family:'Playfair Display',serif;font-size:23px;font-weight:500;margin:15px 0 6px}.empty-state p{max-width:420px;font-size:12px;color:var(--muted);line-height:1.7;margin:0 0 18px}.privacy-note{display:flex;align-items:center;justify-content:center;gap:8px;font-size:10px;color:var(--muted);margin-top:35px}.privacy-dot{width:7px;height:7px;border-radius:50%;background:#77a588;display:inline-block;flex-shrink:0}.toast{position:fixed;right:24px;bottom:24px;max-width:min(440px,calc(100vw - 32px));padding:13px 14px;border:1px solid var(--line);background:var(--surface);border-radius:13px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;font-size:12px;z-index:2000}.toast>span{color:var(--accent);display:flex}.toast.error>span{color:#c05e54}.toast button{border:0;background:transparent;color:var(--muted);margin-left:5px;padding:2px}.loading-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:12px;color:var(--muted);font-size:13px}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+const FONT_FAMILIES = [
+  { id: 'Georgia', label: 'Georgia', family: 'Georgia, serif' },
+  { id: 'Times New Roman', label: 'Times New Roman', family: '"Times New Roman", Times, serif' },
+  { id: 'Palatino', label: 'Palatino', family: 'Palatino, "Palatino Linotype", "Book Antiqua", "URW Palladio L", P052, "TeX Gyre Pagella", serif' },
+  { id: 'Garamond', label: 'Garamond', family: 'Garamond, "EB Garamond", serif' },
+  { id: 'Bookerly', label: 'Bookerly', family: 'Bookerly, "Literata", "Merriweather", Georgia, serif' },
+  { id: 'Open Sans', label: 'Open Sans', family: '"Open Sans", "Segoe UI", sans-serif' },
+  { id: 'Arial', label: 'Arial', family: 'Arial, Helvetica, sans-serif' },
+  { id: 'Verdana', label: 'Verdana', family: 'Verdana, Geneva, sans-serif' },
+  { id: 'Courier New', label: 'Courier New', family: '"Courier New", Courier, monospace' },
+  { id: 'Comic Sans', label: 'Comic Sans', family: '"Comic Sans MS", "Comic Sans", cursive, sans-serif' }
+];
 
-/* Auth */
-.auth-page{min-height:100vh;display:grid;place-items:center;padding:30px 18px;position:relative;background:radial-gradient(ellipse at 50% 0%,var(--accent-soft),transparent 55%),var(--bg)}.auth-theme{position:absolute;top:24px;right:25px}.auth-card{width:min(100%,450px);border:1px solid var(--line);background:var(--surface);border-radius:24px;padding:34px 38px;box-shadow:var(--shadow)}.auth-brand{margin-bottom:24px}.auth-illustration{height:100px;position:relative;display:grid;place-items:center;margin-bottom:18px}.auth-orbit{width:92px;height:92px;border-radius:50%;border:1px solid var(--line);position:absolute}.auth-orbit:before,.auth-orbit:after{content:'';position:absolute;border-radius:50%;background:#d8e5d9}.auth-orbit:before{width:12px;height:12px;top:5px;right:9px}.auth-orbit:after{width:7px;height:7px;bottom:8px;left:5px}.auth-book{width:60px;height:65px;background:var(--accent);color:white;border-radius:5px 10px 10px 5px;display:grid;place-items:center;box-shadow:7px 8px 0 var(--accent-soft);transform:rotate(-5deg)}.auth-card h1{font-size:34px;letter-spacing:-.8px;line-height:1.12;margin:12px 0}.auth-subtitle{font-size:12px;line-height:1.7;color:var(--muted);margin:0 0 23px}.auth-form{display:flex;flex-direction:column;gap:15px}.auth-form label{display:flex;flex-direction:column;gap:7px;font-size:11px;font-weight:700}.auth-form input{height:45px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--ink);padding:0 13px;outline:0;font-size:12px}.auth-form input:focus{border-color:var(--accent)}.auth-submit{width:100%;margin-top:3px}.auth-message{display:flex;gap:8px;align-items:flex-start;font-size:11px;line-height:1.5;color:#b45c52;background:#b45c520d;padding:10px;border-radius:9px}.auth-switch{text-align:center;font-size:11px;color:var(--muted);margin-top:20px}.auth-switch button{border:0;background:transparent;color:var(--accent);font-weight:700;padding:0 0 0 4px}.auth-privacy{border-top:1px solid var(--line);padding-top:18px;margin-top:22px;display:flex;justify-content:center;align-items:center;gap:7px;color:var(--muted);font-size:9px}.setup-page{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--bg)}.setup-card{width:min(100%,560px);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:35px;box-shadow:var(--shadow)}.setup-card h1{font-family:'Playfair Display',serif;font-weight:500;font-size:30px}.setup-card p,.setup-card li{font-size:13px;line-height:1.8;color:var(--muted)}code{background:var(--surface-2);border-radius:5px;padding:2px 5px;font-size:.9em}
+const THEME_OPTIONS = [
+  { id: 'light', label: 'Light', icon: Sun },
+  { id: 'sepia', label: 'Sepia', icon: BookOpen },
+  { id: 'dark', label: 'Dark', icon: Moon }
+];
 
-/* Reader */
-.reader-page{min-height:calc(100vh - 1px);background:var(--bg)}.reader-topbar{min-height:78px;border-bottom:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:space-between;padding:12px clamp(16px,4vw,56px);gap:20px}.reader-back{display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--ink);font-size:12px;font-weight:600;white-space:nowrap}.reader-book-heading{display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center}.reader-label{font-size:8px;letter-spacing:1.7px;color:var(--muted);font-weight:700;margin-bottom:5px}.reader-book-heading strong{font-family:'Playfair Display',serif;font-weight:500;font-size:17px;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.reader-actions{display:flex;gap:7px}.font-small{font-size:13px;font-weight:700}.reader-layout{display:flex;min-height:calc(100vh - 79px)}.toc-panel{width:270px;flex-shrink:0;border-right:1px solid var(--line);background:var(--surface);padding:20px 0;overflow:auto}.toc-heading{display:flex;align-items:center;justify-content:space-between;padding:0 18px 16px;font-size:12px;font-weight:700;border-bottom:1px solid var(--line)}.toc-heading button{border:0;background:transparent;color:var(--muted)}.toc-panel nav{padding:10px 0}.toc-item{width:100%;border:0;background:transparent;color:var(--muted);text-align:left;padding:11px 14px;font-size:11px;line-height:1.5}.toc-item:hover{background:var(--accent-soft);color:var(--accent)}.toc-empty{font-size:11px;color:var(--muted);padding:14px}.reader-stage{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;padding:24px clamp(12px,3vw,40px) 0}.reader-paper{position:relative;width:min(100%,940px);height:calc(100vh - 185px);min-height:420px;background:#fffdf8;border:1px solid #e7e2d6;border-radius:4px;box-shadow:0 14px 50px rgba(44,47,38,.07);overflow:hidden}.epub-viewer{width:100%;height:100%;padding:20px 25px}.epub-viewer.hidden{visibility:hidden}.reader-loading,.reader-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#718076;font-size:12px;text-align:center;padding:25px}.reader-error{color:#b35b50}.reader-error h3{font-family:'Playfair Display',serif;font-size:24px;font-weight:500;margin:0}.reader-error p{max-width:420px;line-height:1.6}.reader-footer{width:min(100%,940px);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:19px 0 22px}.page-nav{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:var(--ink);font-size:11px;font-weight:600;white-space:nowrap}.page-nav:disabled{opacity:.35}.reader-progress{width:min(300px,35%)}.reader-progress-label{display:flex;justify-content:space-between;gap:10px;font-size:9px;color:var(--muted)}.reader-progress .progress-track{margin-top:7px}.reader-progress .progress-track>span{background:#7a9d84}
+const THEME_CONFIG = {
+  light: {
+    paperBg: '#ffffff',
+    textColor: '#1f2937',
+    linkColor: '#0d9488'
+  },
+  sepia: {
+    paperBg: '#fbf0d9',
+    textColor: '#463426',
+    linkColor: '#8c5025'
+  },
+  dark: {
+    paperBg: '#1b1f24',
+    textColor: '#e5e7eb',
+    linkColor: '#5eead4'
+  }
+};
 
-/* Reading Settings Drawer */
-.settings-drawer{width:330px;flex-shrink:0;border-left:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;height:calc(100vh - 79px);position:sticky;top:79px;overflow:hidden;z-index:20;box-shadow:-4px 0 25px rgba(0,0,0,.04);animation:slideInRight .22s cubic-bezier(.16,1,.3,1)}
-@keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.settings-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 14px;border-bottom:1px solid var(--line)}
-.settings-title{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
-.settings-icon-teal{color:#0d9488}
-.settings-close{border:0;background:transparent;color:var(--muted);width:32px;height:32px;border-radius:8px;display:grid;place-items:center;transition:all .15s}
-.settings-close:hover{background:var(--surface-2);color:var(--ink)}
-.settings-body{padding:20px;overflow-y:auto;flex:1}
-.settings-section{margin-bottom:23px}
-.settings-label{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px}
-.settings-label-title{display:flex;align-items:center;gap:7px}
-.settings-value{font-size:12px;font-weight:600;color:var(--ink)}
+const HIGHLIGHT_COLORS = {
+  yellow: { id: 'yellow', label: 'Kuning', hex: '#fde047', border: '#ca8a04', text: '#854d0e' },
+  green: { id: 'green', label: 'Hijau', hex: '#86efac', border: '#16a34a', text: '#166534' },
+  blue: { id: 'blue', label: 'Biru', hex: '#93c5fd', border: '#2563eb', text: '#1e40af' },
+  pink: { id: 'pink', label: 'Pink', hex: '#f472b6', border: '#db2777', text: '#9d174d' },
+  orange: { id: 'orange', label: 'Oranye', hex: '#fdba74', border: '#ea580c', text: '#9a3412' },
+  purple: { id: 'purple', label: 'Ungu', hex: '#d8b4fe', border: '#9333ea', text: '#6b21a8' }
+};
 
-/* Theme Grid */
-.theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.theme-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 6px;border-radius:12px;border:1.5px solid var(--line);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
-.theme-card.light{background:#ffffff;color:#1e293b;border-color:#e2e8f0}
-.theme-card.sepia{background:#fbf0d9;color:#5f4b32;border-color:#ebdcb9}
-.theme-card.dark{background:#1a1d20;color:#e5e7eb;border-color:#2d333b}
-.theme-card:hover{transform:translateY(-2px)}
-.theme-card.active{border-color:#0d9488!important;box-shadow:0 0 0 2px rgba(13,148,136,.3)}
+// Unduh / ekspor file EPUB asli dari Supabase Storage
+const safeFileName = title =>
+  String(title || 'buku').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'buku';
 
-/* Slider Controls */
-.slider-control-row{display:flex;align-items:center;gap:11px}
-.stepper-btn{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;transition:all .15s}
-.stepper-btn:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
-.settings-slider{flex:1;height:5px;-webkit-appearance:none;appearance:none;background:var(--line);border-radius:10px;outline:none;cursor:pointer}
-.settings-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:17px;height:17px;border-radius:50%;background:#0d9488;border:2px solid #ffffff;box-shadow:0 2px 5px rgba(0,0,0,.2);cursor:pointer;transition:transform .15s}
-.settings-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+const downloadEpub = async (book, notify) => {
+  if (!book?.file_path) { notify?.('File buku tidak ditemukan.', 'error'); return; }
+  try {
+    notify?.('Menyiapkan unduhan…');
+    const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
+    if (error) throw error;
+    const blob = new Blob([data], { type: 'application/epub+zip' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeFileName(book.title)}.epub`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    notify?.('Unduhan dimulai.');
+  } catch (e) {
+    notify?.(e?.message || 'Gagal mengunduh buku.', 'error');
+  }
+};
 
-/* Font Grid */
-.font-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.font-pill{height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;padding:0 8px;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .15s}
-.font-pill:hover{border-color:#0d9488}
-.font-pill.active{border-color:#0d9488;color:#0d9488;background:rgba(13,148,136,.09);font-weight:700}
+// Efek kertas saat ganti halaman / swipe
+const paperTransform = (el, dx, animate, fade) => {
+  if (!el) return;
+  const w = el.clientWidth || 600;
+  const p = Math.min(1, Math.abs(dx) / w);
+  el.style.transition = animate
+    ? 'transform .2s cubic-bezier(.22,.8,.3,1), opacity .2s ease, box-shadow .2s ease'
+    : 'none';
+  el.style.transform = dx === 0 ? 'none' : `translateX(${dx}px) rotateY(${(-dx / w) * 10}deg)`;
+  el.style.opacity = String(fade ?? (1 - p * 0.35));
+  el.style.boxShadow = dx === 0 ? 'none' : `${dx > 0 ? '-' : ''}14px 0 34px rgba(0,0,0,${(0.08 + p * 0.22).toFixed(2)})`;
+};
+const paperReset = el => {
+  if (!el) return;
+  el.style.transition = 'none';
+  el.style.transform = '';
+  el.style.opacity = '';
+  el.style.boxShadow = '';
+};
 
-/* Alignment Grid */
-.align-buttons-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.align-btn{height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
-.align-btn:hover{border-color:#0d9488}
-.align-btn.active{border-color:#0d9488;color:#0d9488;background:rgba(13,148,136,.09);box-shadow:0 0 0 1px #0d9488}
+const getHighlightStyle = (colorId, theme) => {
+  const c = HIGHLIGHT_COLORS[colorId] || HIGHLIGHT_COLORS.yellow;
+  return {
+    fill: c.hex,
+    'fill-opacity': theme === 'dark' ? '0.65' : '0.55',
+    'mix-blend-mode': 'normal'
+  };
+};
 
-/* View Mode Stack */
-.view-mode-stack{display:flex;flex-direction:column;gap:8px}
-.view-mode-button{width:100%;height:41px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:500;transition:all .2s}
-.view-mode-button:hover{border-color:#0d9488}
-.view-mode-button.active{border-color:#0d9488;color:#0d9488;background:rgba(13,148,136,.09);font-weight:700}
+const getStoredBookmarks = (bookId) => {
+  if (!bookId) return [];
+  try {
+    const raw = localStorage.getItem(`rb_bookmarks_${bookId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
 
-/* Reader paper responsive & themes */
-.reader-paper.spread{width:min(100%,1220px)}
-.reader-stage[data-reader-theme="light"]{background:#f6f5f1}
-.reader-stage[data-reader-theme="light"] .reader-paper{background:#ffffff;border-color:#e5e5e0}
-.reader-stage[data-reader-theme="sepia"]{background:#f1e4cb}
-.reader-stage[data-reader-theme="sepia"] .reader-paper{background:#fbf0d9;border-color:#e5d6b7}
-.reader-stage[data-reader-theme="dark"]{background:#111417}
-.reader-stage[data-reader-theme="dark"] .reader-paper{background:#1b1f24;border-color:#2b313a}
-.reader-stage[data-reader-theme="dark"] .reader-footer .page-nav{color:#e2e8f0}
+const saveStoredBookmarks = (bookId, bookmarks) => {
+  if (!bookId) return;
+  try {
+    localStorage.setItem(`rb_bookmarks_${bookId}`, JSON.stringify(bookmarks));
+  } catch {}
+};
 
-/* Drag and Drop Overlay */
-.drag-overlay{position:fixed;inset:0;background:rgba(20,28,24,.6);backdrop-filter:blur(5px);z-index:999;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:fadeIn .2s}
-.drag-content{background:var(--surface);border:2px dashed #0d9488;border-radius:24px;padding:38px 55px;text-align:center;color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;gap:12px;transform:scale(1.02);transition:transform .2s}
-.drag-content svg{color:#0d9488}
-.drag-content h3{font-family:'Playfair Display',serif;font-size:24px;font-weight:600;margin:0}
-.drag-content p{font-size:13px;color:var(--muted);margin:0}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+const getStoredHighlights = (bookId) => {
+  if (!bookId) return [];
+  try {
+    const raw = localStorage.getItem(`rb_highlights_${bookId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
 
-/* Modal Backdrop & Card */
-.modal-backdrop{position:fixed;inset:0;background:rgba(20,26,23,.58);backdrop-filter:blur(4px);z-index:1000;display:grid;place-items:center;padding:20px;animation:fadeIn .18s ease-out}
-.modal-card{width:min(100%,460px);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px 28px;box-shadow:0 25px 65px rgba(0,0,0,.28);animation:scaleUp .2s cubic-bezier(.16,1,.3,1)}
-@keyframes scaleUp{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
-.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.modal-title{display:flex;align-items:center;gap:9px;font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--ink)}
-.modal-icon-teal{color:#0d9488}
-.modal-close-btn{border:0;background:transparent;color:var(--muted);width:32px;height:32px;border-radius:8px;display:grid;place-items:center;cursor:pointer;transition:all .15s}
-.modal-close-btn:hover{background:var(--surface-2);color:var(--ink)}
-.modal-form{display:flex;flex-direction:column;gap:16px}
-.modal-form label{display:flex;flex-direction:column;gap:7px;font-size:11px;font-weight:700;color:var(--ink)}
-.modal-form input{height:44px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--ink);padding:0 13px;outline:0;font-size:13px;transition:border-color .15s}
-.modal-form input:focus{border-color:#0d9488}
-.modal-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:8px}
-.book-card-actions{display:flex;align-items:center;gap:3px}
-.edit-button{border:0;background:transparent;color:var(--muted);padding:3px;opacity:.65;cursor:pointer;border-radius:6px;display:grid;place-items:center;transition:all .15s}
-.edit-button:hover{opacity:1;color:#0d9488;background:var(--surface-2)}
+const saveStoredHighlights = (bookId, highlights) => {
+  if (!bookId) return;
+  try {
+    localStorage.setItem(`rb_highlights_${bookId}`, JSON.stringify(highlights));
+  } catch {}
+};
 
-@media(max-width:1100px){.book-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.hero-art{right:-3%;opacity:.8}.section-heading{align-items:flex-start;flex-direction:column}.shelf-tools{width:100%}.searchbox{flex:1}.account-email{max-width:150px}}
-@media(max-width:900px){.settings-drawer{position:fixed;top:70px;bottom:0;right:0;width:min(340px,92vw);height:calc(100vh - 70px);box-shadow:-10px 0 35px rgba(0,0,0,.25)}}
-@media(max-width:760px){.topbar{height:70px;padding:0 16px}.brand-name{font-size:20px}.brand-caption{font-size:8px}.brand-mark{width:37px;height:37px}.account-email{display:none}.library-main{padding:20px 16px 35px}.hero{min-height:300px;padding:28px 23px;align-items:flex-start}.hero h1{font-size:39px}.hero-copy>p{max-width:270px}.hero-art{width:100%;right:-34%;opacity:.35}.hero-foot{gap:10px;flex-direction:column;margin-top:20px}.shelf-section{margin-top:30px}.section-heading h2{font-size:29px}.shelf-tools{flex-wrap:wrap}.searchbox{min-width:100%;height:42px}.shelf-tools .primary-button{width:100%}.book-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:25px 16px}.book-cover{padding:13px 11px 12px}.cover-title{font-size:17px}.cover-author{font-size:9px}.cover-open{opacity:1;transform:none;padding:8px 4px;font-size:10px}.book-details{padding-top:10px}.book-title-row h3{font-size:12px}.privacy-note{text-align:center;line-height:1.6;align-items:flex-start}.auth-card{padding:28px 23px}.auth-card h1{font-size:30px}.reader-topbar{padding:10px 12px;gap:7px;flex-wrap:wrap}.reader-back span{display:none}.reader-back{width:34px;justify-content:center}.reader-book-heading{flex:1}.reader-book-heading strong{max-width:42vw;font-size:15px}.reader-actions{gap:4px}.reader-actions .icon-button{width:34px;height:34px}.reader-layout{min-height:calc(100vh - 80px)}.toc-panel{position:fixed;z-index:10;top:80px;bottom:0;left:0;width:min(300px,85vw);box-shadow:var(--shadow)}.reader-stage{padding:12px 8px 0}.reader-paper{height:calc(100vh - 178px);min-height:360px}.epub-viewer{padding:10px}.reader-footer{gap:4px;padding:14px 2px}.page-nav{font-size:0;gap:0}.page-nav svg{width:23px;height:23px}.reader-progress{width:58%}.reader-progress-label{font-size:8px}.toast{right:12px;bottom:12px}.setup-card{padding:25px}}
-@media(min-width:1400px){.book-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return '';
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return '';
+  }
+};
 
-/* Bookmark and Stabilo (Highlight) Features */
-.icon-button.bookmark-active{color:#0d9488!important;background:rgba(13,148,136,.12)!important;border-color:#0d9488!important}
-.icon-button{position:relative}
-.nav-badge-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#0d9488;border:1.5px solid var(--surface)}
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// "Ingat saya": sesi disimpan permanen (localStorage) atau hanya selama browser terbuka (sessionStorage)
+const REMEMBER_KEY = 'rb_remember';
+const authStorage = {
+  getItem: key => {
+    try { return window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key); } catch { return null; }
+  },
+  setItem: (key, value) => {
+    try {
+      const remember = window.localStorage.getItem(REMEMBER_KEY) !== '0';
+      const keep = remember ? window.localStorage : window.sessionStorage;
+      const drop = remember ? window.sessionStorage : window.localStorage;
+      keep.setItem(key, value);
+      drop.removeItem(key);
+    } catch {}
+  },
+  removeItem: key => {
+    try { window.localStorage.removeItem(key); window.sessionStorage.removeItem(key); } catch {}
+  }
+};
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey, { auth: { storage: authStorage, persistSession: true, autoRefreshToken: true } })
+  : null;
 
-.nav-panel{width:330px;flex-shrink:0;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;height:calc(100vh - 79px);position:sticky;top:79px;overflow:hidden;z-index:20}
-.nav-tabs{display:flex;align-items:center;border-bottom:1px solid var(--line);background:var(--surface);padding:8px 8px 0;gap:3px}
-.nav-tab-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 5px;border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:600;border-bottom:2px solid transparent;border-radius:8px 8px 0 0;cursor:pointer;transition:all .15s ease;white-space:nowrap}
-.nav-tab-btn:hover{color:var(--ink);background:var(--surface-2)}
-.nav-tab-btn.active{color:#0d9488;border-bottom-color:#0d9488;background:rgba(13,148,136,.06);font-weight:700}
-.tab-counter{font-size:9px;font-weight:700;background:rgba(13,148,136,.15);color:#0d9488;padding:1px 6px;border-radius:10px}
-.nav-panel-close{border:0;background:transparent;color:var(--muted);width:28px;height:28px;border-radius:7px;display:grid;place-items:center;margin-left:2px;margin-bottom:4px;cursor:pointer;transition:all .15s}
-.nav-panel-close:hover{background:var(--surface-2);color:var(--ink)}
-.nav-panel-content{flex:1;overflow-y:auto;padding:14px 14px 24px}
+const DB_NAME = 'ruang_baca_db';
+const STORE_NAME = 'book_covers';
 
-.quick-add-bookmark-btn{width:100%;height:38px;border-radius:10px;border:1px dashed #0d9488;background:rgba(13,148,136,.05);color:#0d9488;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:14px;cursor:pointer;transition:all .15s ease}
-.quick-add-bookmark-btn:hover{background:rgba(13,148,136,.12);border-style:solid}
+const getCoverDb = () => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.indexedDB) { resolve(null); return; }
+    try {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+};
 
-.bookmarks-list{display:flex;flex-direction:column;gap:10px}
-.bookmark-card{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:11px 13px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:all .18s ease}
-.bookmark-card:hover{border-color:#0d9488;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.04)}
-.bookmark-card-main{display:flex;align-items:flex-start;gap:9px;min-width:0;flex:1}
-.bookmark-card-icon{color:#0d9488;margin-top:2px;flex-shrink:0}
-.bookmark-card-info{min-width:0;display:flex;flex-direction:column;gap:3px}
-.bookmark-card-label{font-size:12px;font-weight:600;color:var(--ink);line-height:1.35;word-break:break-word}
-.bookmark-card-date{font-size:10px;color:var(--muted)}
-.bookmark-card-delete{border:0;background:transparent;color:var(--muted);padding:4px;border-radius:6px;display:grid;place-items:center;opacity:.6;cursor:pointer;transition:all .15s}
-.bookmark-card:hover .bookmark-card-delete{opacity:1}
-.bookmark-card-delete:hover{color:#dc2626!important;background:rgba(220,38,38,.08)}
+const saveCoverToDb = async (bookId, dataUrl) => {
+  if (!bookId || !dataUrl) return;
+  try {
+    const db = await getCoverDb();
+    if (!db) return;
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(dataUrl, bookId);
+  } catch (e) {
+    console.warn('Gagal menyimpan sampul', e);
+  }
+};
 
-.highlights-list{display:flex;flex-direction:column;gap:11px}
-.highlight-card{position:relative;display:flex;flex-direction:column;gap:8px;padding:12px 13px 11px 15px;background:var(--surface-2);border:1px solid var(--line);border-left:4px solid var(--hl-color,#fde047);border-radius:12px;cursor:pointer;transition:all .18s ease}
-.highlight-card:hover{border-color:var(--hl-color,#fde047);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.05)}
-.highlight-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.highlight-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;color:#1e293b}
-.highlight-meta-right{display:flex;align-items:center;gap:6px}
-.highlight-card-date{font-size:9px;color:var(--muted)}
-.highlight-quote{font-family:'Georgia',serif;font-style:italic;font-size:12px;line-height:1.55;color:var(--ink);margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.highlight-card-footer{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--muted)}
-.highlight-card-actions{display:flex;align-items:center;gap:4px}
-.highlight-action-btn{border:0;background:transparent;color:var(--muted);padding:4px;border-radius:6px;cursor:pointer;display:grid;place-items:center;transition:all .15s}
-.highlight-action-btn:hover{color:#dc2626;background:rgba(220,38,38,.08)}
+const getCoverFromDb = async (bookId) => {
+  if (!bookId) return null;
+  try {
+    const db = await getCoverDb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(bookId);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+};
 
-.nav-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 14px;color:var(--muted);gap:10px}
-.nav-empty-icon{width:50px;height:50px;border-radius:15px;background:rgba(13,148,136,.08);color:#0d9488;display:grid;place-items:center;margin-bottom:2px}
-.nav-empty-state h4{margin:0;font-size:15px;font-weight:600;color:var(--ink)}
-.nav-empty-state p{margin:0;font-size:11px;line-height:1.6;max-width:240px}
+const deleteCoverFromDb = async (bookId) => {
+  if (!bookId) return;
+  try {
+    const db = await getCoverDb();
+    if (!db) return;
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(bookId);
+  } catch (e) {}
+};
 
-/* Floating Stabilo Toolbar */
-.floating-stabilo-toolbar{z-index:9999;pointer-events:auto;animation:popoverFadeIn .16s cubic-bezier(.16,1,.3,1)}
-.floating-stabilo-toolbar.placement-top{transform:translate(-50%,-100%)}
-.floating-stabilo-toolbar.placement-bottom{transform:translate(-50%,0)}
-@keyframes popoverFadeIn{from{opacity:0;transform:translate(-50%,-90%) scale(.95)}to{opacity:1;transform:translate(-50%,-100%) scale(1)}}
+const extractCoverFromBook = async (book) => {
+  try {
+    let url = null;
+    try {
+      url = await book.coverUrl();
+    } catch {}
 
-.stabilo-toolbar-inner{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface);border:1px solid var(--line);border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.06);backdrop-filter:blur(8px)}
-.stabilo-toolbar-title{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--muted);padding:0 3px 0 2px;text-transform:uppercase}
-.stabilo-colors{display:flex;align-items:center;gap:5px}
-.stabilo-color-btn{width:23px;height:23px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .15s cubic-bezier(.175,.885,.32,1.275);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.stabilo-color-btn:hover{transform:scale(1.28);box-shadow:0 3px 8px rgba(0,0,0,.22)}
-.stabilo-toolbar-divider{width:1px;height:18px;background:var(--line);margin:0 1px}
-.stabilo-dismiss-btn{width:23px;height:23px;border-radius:50%;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:all .15s}
-.stabilo-dismiss-btn:hover{background:var(--surface-2);color:var(--ink)}
+    if (!url && book.archive) {
+      const manifest = book.package?.manifest || {};
+      for (const key of Object.keys(manifest)) {
+        const item = manifest[key];
+        if (item && item.type && item.type.startsWith('image/')) {
+          const id = (item.id || '').toLowerCase();
+          const href = (item.href || '').toLowerCase();
+          if (item.properties === 'cover-image' || id.includes('cover') || href.includes('cover')) {
+            try {
+              url = await book.archive.createUrl(item.href);
+              if (url) break;
+            } catch {}
+          }
+        }
+      }
+    }
 
-/* Active Highlight Card / Popover */
-.active-highlight-popover{z-index:9999;transform:translate(-50%,-100%);animation:popoverFadeIn .16s cubic-bezier(.16,1,.3,1)}
-.active-highlight-card{width:min(320px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:0 14px 40px rgba(0,0,0,.2),0 3px 10px rgba(0,0,0,.08)}
-.active-highlight-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.active-highlight-badge{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;color:#1e293b}
-.active-highlight-close{border:0;background:transparent;color:var(--muted);width:24px;height:24px;border-radius:6px;display:grid;place-items:center;cursor:pointer;transition:all .15s}
-.active-highlight-close:hover{background:var(--surface-2);color:var(--ink)}
-.active-highlight-quote{font-family:'Georgia',serif;font-style:italic;font-size:12px;line-height:1.5;color:var(--ink);margin:0 0 12px;max-height:80px;overflow-y:auto;word-break:break-word}
-.active-highlight-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
-.active-highlight-colors{display:flex;align-items:center;gap:5px}
-.mini-color-btn{width:18px;height:18px;border-radius:50%;border:1.5px solid transparent;cursor:pointer;transition:all .15s}
-.mini-color-btn:hover{transform:scale(1.2)}
-.mini-color-btn.selected{border-color:#0d9488;box-shadow:0 0 0 2px rgba(13,148,136,.35)}
-.delete-highlight-btn{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:#dc2626;font-size:11px;font-weight:600;padding:5px 8px;border-radius:6px;cursor:pointer;transition:all .15s}
-.delete-highlight-btn:hover{background:rgba(220,38,38,.08)}
+    if (!url) return null;
+    const res = await fetch(url);
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) return null;
 
-@media(max-width:760px){
-  .nav-panel{position:fixed;z-index:100;top:70px;bottom:0;left:0;width:min(340px,90vw);height:calc(100vh - 70px);box-shadow:10px 0 35px rgba(0,0,0,.25);animation:slideInLeft .2s cubic-bezier(.16,1,.3,1)}
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return null;
+  }
+};
+
+const palette = [
+  ['#dce8e1', '#284a3c'], ['#f3dfce', '#70412e'], ['#dce4f5', '#344b7a'],
+  ['#eadcf1', '#684577'], ['#f2e9bd', '#655620'], ['#d9e9ed', '#275560']
+];
+const coverColors = (text='') => palette[(text.charCodeAt(0) || 0) % palette.length];
+const formatSize = bytes => bytes < 1024*1024 ? `${Math.max(1, Math.round(bytes/1024))} KB` : `${(bytes/1024/1024).toFixed(1)} MB`;
+
+const getBookMeta = async file => {
+  const buffer = await file.arrayBuffer();
+  const book = ePub(buffer);
+  try {
+    await book.ready;
+    const m = book.package?.metadata || {};
+    const title = (m.title || '').trim() || file.name.replace(/\.epub$/i, '');
+    const author = (m.creator || '').trim() || 'Penulis tidak diketahui';
+    const coverDataUrl = await extractCoverFromBook(book);
+    book.destroy();
+    return { title, author, coverDataUrl };
+  } catch (e) {
+    book.destroy();
+    throw new Error('File EPUB tidak dapat dibaca. Pastikan file valid dan tidak dilindungi DRM.');
+  }
+};
+
+function App() {
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const [recovering, setRecovering] = useState(false);
+  const [remember, setRemember] = useState(() => { try { return localStorage.getItem('rb_remember') !== '0'; } catch { return true; } });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMessage, setAuthMessage] = useState('');
+  const [books, setBooks] = useState([]);
+  const [covers, setCovers] = useState({});
+  const [progress, setProgress] = useState({});
+  const [loadingBooks, setLoadingBooks] = useState(false);
+  const [booksLoaded, setBooksLoaded] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [notice, setNotice] = useState(null);
+  const [query, setQuery] = useState('');
+  const [theme, setTheme] = useState(() => localStorage.getItem('ruang-baca-theme') || 'light');
+  const [activeBook, setActiveBook] = useState(null);
+  const [readerRefresh, setReaderRefresh] = useState(0);
+  const [editingBook, setEditingBook] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editAuthor, setEditAuthor] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+  const fileInput = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('ruang-baca-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (!supabase) { setAuthReady(true); return; }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next);
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const notify = (message, kind='success') => {
+    setNotice({ message, kind });
+    window.setTimeout(() => setNotice(null), 4200);
+  };
+
+  const loadBooks = useCallback(async () => {
+    if (!supabase || !session?.user) return;
+    setLoadingBooks(true);
+    const [{ data: bookRows, error: bookError }, { data: progressRows, error: progressError }, orderRes] = await Promise.all([
+      supabase.from('books').select('*').order('created_at', { ascending: false }),
+      supabase.from('reading_progress').select('*'),
+      supabase.from('shelf_order').select('book_ids').maybeSingle()
+    ]);
+    setLoadingBooks(false);
+    setBooksLoaded(true);
+    if (bookError || progressError) {
+      notify(bookError?.message || progressError?.message || 'Gagal memuat koleksi.', 'error');
+      return;
+    }
+    const booksList = bookRows || [];
+    setBooks(booksList);
+    // Urutan rak dari cloud (sinkron antar perangkat). Jika belum ada, pakai cache lokal.
+    const cloudOrder = orderRes?.data?.book_ids;
+    if (Array.isArray(cloudOrder)) {
+      setOrder(cloudOrder);
+      try { localStorage.setItem(`rb_order_${session.user.id}`, JSON.stringify(cloudOrder)); } catch {}
+    } else if (orderRes?.error) {
+      console.warn('Urutan rak belum bisa disinkronkan (tabel shelf_order belum dibuat?):', orderRes.error.message);
+    }
+    const map = {};
+    (progressRows || []).forEach(row => { map[row.book_id] = row; });
+    booksList.forEach(b => {
+      try {
+        const local = localStorage.getItem(`rb_progress_${b.id}`);
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (!map[b.id] || Number(parsed.percentage || 0) > Number(map[b.id].percentage || 0)) {
+            map[b.id] = { ...(map[b.id] || {}), ...parsed, book_id: b.id };
+          }
+        }
+      } catch {}
+    });
+    setProgress(map);
+  }, [session?.user?.id]);
+
+  useEffect(() => { loadBooks(); }, [loadBooks]);
+
+  const handleAuth = async e => {
+    e.preventDefault();
+    if (!supabase) return;
+    setAuthBusy(true); setAuthMessage('');
+    try { localStorage.setItem('rb_remember', remember ? '1' : '0'); } catch {}
+    try {
+      if (authMode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}${window.location.pathname}`
+        });
+        if (error) throw error;
+        setAuthMessage('Jika email terdaftar, tautan untuk mengatur ulang kata sandi sudah dikirim. Periksa kotak masuk atau folder spam.');
+        return;
+      }
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
+        });
+        if (error) throw error;
+        setAuthMessage(data.session ? 'Akun berhasil dibuat. Anda sudah masuk.' : 'Akun dibuat. Periksa email untuk konfirmasi, lalu masuk.');
+        if (data.session) setSession(data.session);
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setSession(data.session);
+      }
+    } catch (e) {
+      const m = String(e?.message || '');
+      setAuthMessage(/rate limit|too many/i.test(m) ? 'Terlalu banyak permintaan. Coba lagi beberapa menit lagi.' : (m || 'Autentikasi gagal.'));
+    }
+    finally { setAuthBusy(false); }
+  };
+
+  const handleLogout = async () => {
+    await supabase?.auth.signOut();
+    setSession(null); setBooks([]); setProgress({}); setActiveBook(null);
+  };
+
+  const processFiles = async (fileList) => {
+    const rawFiles = Array.from(fileList || []);
+    if (!rawFiles.length) return;
+    if (!canUpload) { notify('Beli ebook di tab Katalog terlebih dahulu untuk membuka fitur menambah EPUB sendiri.', 'error'); return; }
+
+    const epubFiles = rawFiles.filter(f => f.name.toLowerCase().endsWith('.epub'));
+    if (!epubFiles.length) {
+      notify('Pilih file dengan ekstensi .epub.', 'error');
+      return;
+    }
+
+    const validFiles = epubFiles.filter(f => f.size <= 100 * 1024 * 1024);
+    const oversizedFiles = epubFiles.filter(f => f.size > 100 * 1024 * 1024);
+
+    if (oversizedFiles.length > 0) {
+      notify(`${oversizedFiles.length} file dilewati karena melebihi 100 MB.`, 'error');
+    }
+
+    if (!validFiles.length) return;
+    if (!session?.user || !supabase) return;
+
+    setUploadBusy(true);
+    setUploadProgress({ current: 0, total: validFiles.length });
+
+    const newBooks = [];
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      setUploadProgress({ current: i + 1, total: validFiles.length });
+      try {
+        const meta = await getBookMeta(file);
+        const id = crypto.randomUUID();
+        const path = `${session.user.id}/${id}.epub`;
+        const { error: uploadError } = await supabase.storage.from('epub-files').upload(path, file, {
+          contentType: 'application/epub+zip',
+          upsert: false
+        });
+        if (uploadError) throw uploadError;
+
+        const { data, error: insertError } = await supabase.from('books').insert({
+          user_id: session.user.id,
+          title: meta.title,
+          author: meta.author,
+          file_path: path,
+          file_size: file.size
+        }).select().single();
+
+        if (insertError) {
+          await supabase.storage.from('epub-files').remove([path]);
+          throw insertError;
+        }
+
+        newBooks.push(data);
+        if (meta.coverDataUrl) {
+          saveCoverToDb(data.id, meta.coverDataUrl);
+          setCovers(prev => ({ ...prev, [data.id]: meta.coverDataUrl }));
+        }
+        successCount++;
+      } catch (err) {
+        console.error('Gagal mengunggah:', file.name, err);
+        failedCount++;
+      }
+    }
+
+    if (newBooks.length > 0) {
+      setBooks(old => [...newBooks, ...old]);
+    }
+
+    if (validFiles.length === 1) {
+      if (successCount === 1) {
+        notify(`“${newBooks[0]?.title || 'Buku'}” berhasil ditambahkan ke rak buku.`);
+      } else {
+        notify('Buku gagal diunggah.', 'error');
+      }
+    } else {
+      if (failedCount === 0) {
+        notify(`${successCount} buku berhasil ditambahkan ke rak buku!`);
+      } else {
+        notify(`${successCount} buku berhasil diunggah (${failedCount} gagal).`, failedCount > successCount ? 'error' : 'success');
+      }
+    }
+
+    setUploadBusy(false);
+    setUploadProgress({ current: 0, total: 0 });
+  };
+
+  const onAddBookClick = () => {
+    if (!canUpload) {
+      notify('Fitur tambah buku terbuka setelah kamu membeli ebook di tab Katalog.', 'error');
+      return;
+    }
+    fileInput.current?.click();
+  };
+
+  const uploadBook = async event => {
+    const files = event.target.files;
+    await processFiles(files);
+    event.target.value = '';
+  };
+
+  const handleDragOver = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = async e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer?.files?.length) {
+      await processFiles(e.dataTransfer.files);
+    }
+  };
+
+  useEffect(() => {
+    if (!books.length) return;
+    books.forEach(async (book) => {
+      const cached = await getCoverFromDb(book.id);
+      if (cached) {
+        setCovers(prev => ({ ...prev, [book.id]: cached }));
+      } else if (supabase) {
+        try {
+          const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
+          if (!data || error) return;
+          const buffer = await data.arrayBuffer();
+          const bookInst = ePub(buffer);
+          await bookInst.ready;
+          const coverUrl = await extractCoverFromBook(bookInst);
+          bookInst.destroy();
+          if (coverUrl) {
+            await saveCoverToDb(book.id, coverUrl);
+            setCovers(prev => ({ ...prev, [book.id]: coverUrl }));
+          }
+        } catch (e) {
+          console.warn('Sampul tidak ditemukan untuk', book.title);
+        }
+      }
+    });
+  }, [books]);
+
+  const deleteBook = async book => {
+    if (!window.confirm(`Hapus “${book.title}” dari koleksi? File EPUB dan progres bacanya juga akan dihapus.`)) return;
+    const { error: storageError } = await supabase.storage.from('epub-files').remove([book.file_path]);
+    if (storageError) { notify(storageError.message, 'error'); return; }
+    const { error } = await supabase.from('books').delete().eq('id', book.id);
+    if (error) { notify(error.message, 'error'); return; }
+    deleteCoverFromDb(book.id);
+    try {
+      localStorage.removeItem(`rb_progress_${book.id}`);
+      localStorage.removeItem(`rb_loc_${book.id}`);
+    } catch {}
+    setCovers(prev => { const n = {...prev}; delete n[book.id]; return n; });
+    setBooks(old => old.filter(b => b.id !== book.id));
+    setProgress(old => { const n = {...old}; delete n[book.id]; return n; });
+    if (activeBook?.id === book.id) setActiveBook(null);
+    notify('Buku dihapus dari koleksi.');
+  };
+
+  const openBook = book => { setActiveBook(book); setReaderRefresh(n => n + 1); };
+
+  const startEditBook = (book, e) => {
+    e?.stopPropagation();
+    setEditingBook(book);
+    setEditTitle(book.title);
+    setEditAuthor(book.author || '');
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingBook || !supabase) return;
+    const trimmedTitle = editTitle.trim();
+    if (!trimmedTitle) {
+      notify('Judul buku tidak boleh kosong.', 'error');
+      return;
+    }
+    const trimmedAuthor = editAuthor.trim() || 'Penulis tidak diketahui';
+
+    setEditBusy(true);
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .update({
+          title: trimmedTitle,
+          author: trimmedAuthor,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingBook.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setBooks(old => old.map(b => b.id === editingBook.id ? data : b));
+      if (activeBook?.id === editingBook.id) {
+        setActiveBook(data);
+      }
+      notify(`Judul buku berhasil diperbarui.`);
+      setEditingBook(null);
+    } catch (err) {
+      notify(err.message || 'Gagal mengubah judul buku.', 'error');
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+  // ---------- Urutan rak buku (drag & drop), disimpan per akun di browser ----------
+  const [order, setOrder] = useState([]);
+  const [draggingId, setDraggingId] = useState(null);
+  const dragRef = useRef(null);
+  const orderedIdsRef = useRef([]);
+  const userId = session?.user?.id;
+
+  useEffect(() => {
+    if (!userId) { setOrder([]); return; }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rb_order_${userId}`) || '[]');
+      setOrder(Array.isArray(saved) ? saved : []);
+    } catch { setOrder([]); }
+  }, [userId]);
+
+  const orderedBooks = useMemo(() => {
+    const pos = new Map(order.map((id, i) => [id, i]));
+    const fresh = books.filter(b => !pos.has(b.id));
+    const known = books.filter(b => pos.has(b.id)).sort((a, b) => pos.get(a.id) - pos.get(b.id));
+    return [...fresh, ...known];
+  }, [books, order]);
+  orderedIdsRef.current = orderedBooks.map(b => b.id);
+
+  const moveBook = (dragId, overId) => {
+    const ids = orderedIdsRef.current.slice();
+    const from = ids.indexOf(dragId);
+    const to = ids.indexOf(overId);
+    if (from < 0 || to < 0 || from === to) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, dragId);
+    orderedIdsRef.current = ids;
+    setOrder(ids);
+    try { if (userId) localStorage.setItem(`rb_order_${userId}`, JSON.stringify(ids)); } catch {}
+  };
+
+  const saveOrderTimer = useRef(null);
+  const warnedOrder = useRef(false);
+  const saveOrderToCloud = () => {
+    if (!supabase || !userId) return;
+    clearTimeout(saveOrderTimer.current);
+    saveOrderTimer.current = setTimeout(async () => {
+      const { error } = await supabase.from('shelf_order').upsert(
+        { user_id: userId, book_ids: orderedIdsRef.current, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+      if (error && !warnedOrder.current) {
+        warnedOrder.current = true;
+        notify('Urutan tersimpan di perangkat ini, tapi belum tersinkron ke akun. Jalankan SQL shelf_order di Supabase.', 'error');
+      }
+    }, 400);
+  };
+
+  const startCardDrag = (e, bookId) => {
+    if (query || sortMode !== 'manual' || dragRef.current) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.target.closest('.book-card-actions')) return;
+    const card = e.currentTarget;
+    const isTouch = e.pointerType !== 'mouse';
+    const st = {
+      id: bookId, card, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY,
+      active: false, timer: null, raf: 0, ghost: null, dx: 0, dy: 0
+    };
+    dragRef.current = st;
+
+    const hitTest = () => {
+      const el = document.elementFromPoint(st.x, st.y);
+      const target = el?.closest?.('.book-card[data-id]');
+      if (target && target.dataset.id !== st.id) moveBook(st.id, target.dataset.id);
+    };
+    const tick = () => {
+      if (!st.active) return;
+      const edge = 90;
+      if (st.y < edge) window.scrollBy(0, -Math.ceil((edge - st.y) / 5));
+      else if (st.y > window.innerHeight - edge) window.scrollBy(0, Math.ceil((st.y - (window.innerHeight - edge)) / 5));
+      hitTest();
+      st.raf = requestAnimationFrame(tick);
+    };
+    const begin = () => {
+      st.active = true;
+      const r = card.getBoundingClientRect();
+      st.dx = st.x - r.left;
+      st.dy = st.y - r.top;
+      const g = card.cloneNode(true);
+      g.removeAttribute('data-id');
+      Object.assign(g.style, {
+        position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`,
+        margin: '0', zIndex: '9999', pointerEvents: 'none', opacity: '.95',
+        transform: 'scale(1.06) rotate(-2deg)', transition: 'transform .15s ease',
+        filter: 'drop-shadow(0 14px 22px rgba(0,0,0,.32))'
+      });
+      g.classList.remove('is-drag-source');
+      document.body.appendChild(g);
+      st.ghost = g;
+      document.body.classList.add('is-dragging-card');
+      setDraggingId(st.id);
+      try { navigator.vibrate?.(15); } catch {}
+      st.raf = requestAnimationFrame(tick);
+    };
+    const onMove = ev => {
+      st.x = ev.clientX; st.y = ev.clientY;
+      if (!st.active) {
+        const moved = Math.hypot(st.x - st.sx, st.y - st.sy);
+        if (isTouch) { if (moved > 10) cleanup(false); }
+        else if (moved > 6) begin();
+        return;
+      }
+      st.ghost.style.left = `${st.x - st.dx}px`;
+      st.ghost.style.top = `${st.y - st.dy}px`;
+    };
+    const blockScroll = ev => { if (st.active && ev.cancelable) ev.preventDefault(); };
+    const onUp = () => cleanup(true);
+    const stopClick = ev => { ev.stopPropagation(); ev.preventDefault(); };
+
+    function cleanup(finished) {
+      clearTimeout(st.timer);
+      cancelAnimationFrame(st.raf);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      document.removeEventListener('touchmove', blockScroll);
+      if (st.active) {
+        st.ghost?.remove();
+        document.body.classList.remove('is-dragging-card');
+        setDraggingId(null);
+        if (finished) {
+          saveOrderToCloud();
+          window.addEventListener('click', stopClick, { capture: true, once: true });
+          setTimeout(() => window.removeEventListener('click', stopClick, true), 80);
+        }
+      }
+      dragRef.current = null;
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+    document.addEventListener('touchmove', blockScroll, { passive: false });
+    if (isTouch) st.timer = setTimeout(begin, 350);
+  };
+
+  // ---------- Admin & akses buku ----------
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [accessBook, setAccessBook] = useState(null);
+  const [accessList, setAccessList] = useState([]);
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [accessInput, setAccessInput] = useState('');
+  const canUpload = isAdmin || books.some(b => b.user_id !== userId && !b.is_sample);
+
+  useEffect(() => {
+    let alive = true;
+    if (!supabase || !userId) { setIsAdmin(false); return; }
+    supabase.rpc('is_admin').then(({ data, error }) => {
+      if (alive) setIsAdmin(!error && data === true);
+    });
+    return () => { alive = false; };
+  }, [userId]);
+
+  const loadAccessList = async (bookId) => {
+    setAccessLoading(true);
+    const { data, error } = await supabase
+      .from('book_access')
+      .select('id,user_email,created_at')
+      .eq('book_id', bookId)
+      .order('created_at', { ascending: false });
+    setAccessLoading(false);
+    if (error) { notify(error.message || 'Gagal memuat daftar akses.', 'error'); return; }
+    setAccessList(data || []);
+  };
+
+  const openAccess = (book) => {
+    setAccessBook(book);
+    setAccessList([]);
+    setAccessInput('');
+    loadAccessList(book.id);
+  };
+
+  const grantAccess = async (e) => {
+    e.preventDefault();
+    if (!accessBook) return;
+    const emails = [...new Set(accessInput.split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean))];
+    if (!emails.length) return;
+    const bad = emails.filter(x => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+    if (bad.length) { notify(`Format email tidak valid: ${bad.join(', ')}`, 'error'); return; }
+    setAccessBusy(true);
+    const rows = emails.map(email => ({ book_id: accessBook.id, user_email: email, granted_by: userId }));
+    const { error } = await supabase.from('book_access').upsert(rows, { onConflict: 'book_id,user_email', ignoreDuplicates: true });
+    setAccessBusy(false);
+    if (error) { notify(error.message || 'Gagal memberi akses.', 'error'); return; }
+    setAccessInput('');
+    notify(`Akses diberikan ke ${emails.length} email.`);
+    loadAccessList(accessBook.id);
+  };
+
+  const revokeAccess = async (row) => {
+    if (!window.confirm(`Cabut akses ${row.user_email}?`)) return;
+    const { error } = await supabase.from('book_access').delete().eq('id', row.id);
+    if (error) { notify(error.message || 'Gagal mencabut akses.', 'error'); return; }
+    setAccessList(list => list.filter(x => x.id !== row.id));
+    notify('Akses dicabut.');
+  };
+
+  // ---------- Katalog otomatis & pemesanan ----------
+  const [tab, setTab] = useState('shelf');
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [catalogSelected, setCatalogSelected] = useState([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  // Katalog = semua buku milik admin (kecuali buku contoh), diambil lewat fungsi server get_catalog()
+  const loadCatalog = async () => {
+    if (!supabase) return;
+    setCatalogLoading(true);
+    const { data, error } = await supabase.rpc('get_catalog');
+    setCatalogLoading(false);
+    if (error) { setCatalogError(error.message || 'gagal memuat'); return; }
+    const items = (data || []).map(r => ({
+      id: r.book_id, book_id: r.book_id, title: r.title, author: r.author, cover_data: r.cover_thumb
+    }));
+    setCatalogError('');
+    setCatalogItems(items);
+    setCatalogSelected(sel => sel.filter(id => items.some(i => i.id === id)));
+  };
+
+  useEffect(() => {
+    if (userId && tab === 'catalog') loadCatalog();
+  }, [userId, tab]);
+
+  const toggleCatalogSelect = id =>
+    setCatalogSelected(sel => sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id]);
+
+  // ---------- Pesanan: dibuat pembeli, diterima admin ----------
+  const [orders, setOrders] = useState([]);
+  const warnedOrders = useRef(false);
+  const loadOrders = async () => {
+    if (!supabase) return;
+    let data = null;
+    const first = await supabase
+      .from('orders')
+      .select('*, order_items(book_id,title)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (!first.error) {
+      data = first.data;
+    } else {
+      // Cadangan: ambil pesanan dan item secara terpisah (tidak bergantung pada relasi di schema cache PostgREST)
+      const ord = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
+      if (ord.error) {
+        console.warn('Gagal memuat pesanan:', ord.error.message);
+        if (isAdmin && !warnedOrders.current) {
+          warnedOrders.current = true;
+          notify(`Pesanan gagal dimuat: ${ord.error.message}`, 'error');
+        }
+        return;
+      }
+      const rows = ord.data || [];
+      const ids = rows.map(o => o.id);
+      const itemsRes = ids.length
+        ? await supabase.from('order_items').select('order_id,book_id,title').in('order_id', ids)
+        : { data: [] };
+      const byOrder = {};
+      (itemsRes.data || []).forEach(it => { (byOrder[it.order_id] = byOrder[it.order_id] || []).push(it); });
+      data = rows.map(o => ({ ...o, order_items: byOrder[o.id] || [] }));
+    }
+    setOrders(data || []);
+    if (!isAdmin) {
+      const have = new Set(books.map(b => b.id));
+      const missing = (data || []).some(o => o.status === 'approved' && (o.order_items || []).some(i => i.book_id && !have.has(i.book_id)));
+      if (missing) loadBooks();
+    }
+  };
+  const loadOrdersRef = useRef(null);
+  loadOrdersRef.current = loadOrders;
+
+  useEffect(() => {
+    if (!userId) { setOrders([]); return; }
+    loadOrdersRef.current();
+    if (!(isAdmin || tab === 'catalog' || tab === 'orders')) return;
+    const t = setInterval(() => loadOrdersRef.current(), isAdmin ? 12000 : 45000);
+    const onFocus = () => { if (document.visibilityState === 'visible') loadOrdersRef.current(); };
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [userId, isAdmin, tab]);
+
+  // Admin: pesanan baru muncul seketika lewat Realtime (butuh tabel orders di publikasi supabase_realtime)
+  useEffect(() => {
+    if (!supabase || !userId || !isAdmin) return;
+    const channel = supabase
+      .channel('orders-admin')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => loadOrdersRef.current())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, isAdmin]);
+
+  const pendingCount = orders.filter(o => o.status === 'pending').length;
+
+  // Tiga buku terlaris untuk ilustrasi banner (diambil dari fungsi server get_bestsellers)
+  const [bestsellers, setBestsellers] = useState([]);
+  useEffect(() => {
+    if (!supabase || !userId) { setBestsellers([]); return; }
+    let alive = true;
+    supabase.rpc('get_bestsellers').then(({ data, error }) => {
+      if (alive && !error && Array.isArray(data)) setBestsellers(data);
+    });
+    return () => { alive = false; };
+  }, [userId]);
+  // Pengguna baru (belum punya buku selain contoh): arahkan perhatian ke tab Katalog
+  const nudgeCatalog = !isAdmin && booksLoaded && !loadingBooks && tab !== 'catalog' && !books.some(b => !b.is_sample);
+
+  const submitOrder = async ({ code, total, ids }) => {
+    const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
+    if (error) { notify(error.message || 'Gagal membuat pesanan.', 'error'); return { ok: false }; }
+    setCatalogSelected([]);
+    loadOrders();
+    return { ok: true };
+  };
+
+  const approveOrder = async o => {
+    if (!window.confirm(`Terima pesanan ${o.code} dan buka kunci ${(o.order_items || []).length} buku untuk ${o.user_email}?`)) return;
+    const { error } = await supabase.rpc('approve_order', { p_order_id: o.id });
+    if (error) { notify(error.message || 'Gagal menerima pesanan.', 'error'); return; }
+    notify('Pesanan diterima. Buku sudah masuk ke rak pembeli.');
+    loadOrders();
+  };
+
+  const rejectOrder = async o => {
+    if (!window.confirm(`Tolak pesanan ${o.code} dari ${o.user_email}?`)) return;
+    const { error } = await supabase.rpc('reject_order', { p_order_id: o.id });
+    if (error) { notify(error.message || 'Gagal menolak pesanan.', 'error'); return; }
+    notify('Pesanan ditolak.');
+    loadOrders();
+  };
+
+  // Thumbnail sampul disimpan otomatis ke tiap buku (admin: semua buku, pengguna: buku sendiri) agar tampil di katalog
+  const thumbTried = useRef(new Set());
+  useEffect(() => {
+    if (!userId) return;
+    const todo = books.filter(b => (isAdmin || b.user_id === userId) && !b.cover_thumb && covers[b.id] && !thumbTried.current.has(b.id));
+    if (!todo.length) return;
+    (async () => {
+      let ok = 0, firstError = '';
+      for (const b of todo) {
+        thumbTried.current.add(b.id);
+        const thumb = await makeThumb(covers[b.id]);
+        if (!thumb) continue;
+        const { error } = await supabase.from('books').update({ cover_thumb: thumb }).eq('id', b.id);
+        if (error) { firstError = firstError || error.message; continue; }
+        ok += 1;
+        setBooks(list => list.map(x => x.id === b.id ? { ...x, cover_thumb: thumb } : x));
+      }
+      if (isAdmin) {
+        if (firstError) notify(`Sampul katalog gagal disimpan: ${firstError}`, 'error');
+        else if (ok > 0) notify(`Sampul katalog diperbarui (${ok} buku).`);
+      }
+    })();
+  }, [isAdmin, userId, books, covers]);
+
+  const [sortMode, setSortMode] = useState(() => {
+    try { return localStorage.getItem('rb_sort') || 'manual'; } catch { return 'manual'; }
+  });
+  const [showOwner, setShowOwner] = useState(() => {
+    try { return localStorage.getItem('rb_show_owner') !== '0'; } catch { return true; }
+  });
+  const toggleOwner = () => {
+    setShowOwner(v => {
+      try { localStorage.setItem('rb_show_owner', v ? '0' : '1'); } catch {}
+      return !v;
+    });
+  };
+  const changeSort = (value) => {
+    setSortMode(value);
+    try { localStorage.setItem('rb_sort', value); } catch {}
+  };
+
+  const toggleSample = async (book) => {
+    const next = !book.is_sample;
+    const { error } = await supabase.from('books').update({ is_sample: next }).eq('id', book.id);
+    if (error) { notify(error.message || 'Gagal mengubah status buku contoh.', 'error'); return; }
+    setBooks(list => list.map(b => b.id === book.id ? { ...b, is_sample: next } : b));
+    notify(next ? 'Buku dijadikan contoh untuk semua pengguna.' : 'Buku tidak lagi menjadi contoh.');
+  };
+
+  const filteredBooks = useMemo(() => {
+    const list = orderedBooks.filter(book =>
+      `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
+    );
+    if (sortMode === 'manual') return list;
+    const cmp = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
+    const sorted = list.slice();
+    if (sortMode === 'title-asc') sorted.sort((a, b) => cmp(a.title, b.title));
+    else if (sortMode === 'title-desc') sorted.sort((a, b) => cmp(b.title, a.title));
+    else if (sortMode === 'author-asc') sorted.sort((a, b) => cmp(a.author, b.author) || cmp(a.title, b.title));
+    return sorted;
+  }, [orderedBooks, query, sortMode]);
+
+  if (!supabase) return <SetupMissing />;
+  if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Baca…</span></div>;
+  if (recovering && session) return <ResetPasswordScreen theme={theme} setTheme={setTheme} onDone={() => {
+    setRecovering(false);
+    try { window.history.replaceState(null, '', window.location.pathname); } catch {}
+    notify('Kata sandi berhasil diubah.');
+  }} />;
+  if (!session) return <AuthScreen {...{remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme}} />;
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-mark"><BookOpen size={22}/></div>
+          <div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div>
+        </div>
+        <div className="top-actions">
+          <span className="account-email">{session.user.email}</span>
+          <button className="icon-button" title={theme === 'light' ? 'Aktifkan dark mode' : 'Aktifkan light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+            {theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}
+          </button>
+          <button className="icon-button" title="Keluar" onClick={handleLogout}><LogOut size={18}/></button>
+        </div>
+      </header>
+
+      {activeBook ? (
+        <Reader
+          key={`${activeBook.id}-${readerRefresh}`}
+          book={activeBook}
+          savedProgress={progress[activeBook.id]}
+          userId={session?.user?.id}
+          onClose={() => setActiveBook(null)}
+          onProgress={(row) => setProgress(old => ({...old, [activeBook.id]: row}))}
+          onCoverLoaded={(id, url) => setCovers(prev => ({...prev, [id]: url}))}
+          notify={notify}
+        />
+      ) : (
+        <main
+          className="library-main"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDragging && (
+            <div className="drag-overlay">
+              <div className="drag-content">
+                <UploadCloud size={48} />
+                <h3>Lepaskan file EPUB di sini</h3>
+                <p>Mendukung pengunggahan banyak file sekaligus (multiple upload)</p>
+              </div>
+            </div>
+          )}
+
+          <section className="hero">
+            <div className="hero-copy">
+              <div className="eyebrow"><LibraryBig size={15}/> RUANG UNTUK CERITA</div>
+              <h1>Semua bacaan,<br/><em>dalam satu rak.</em></h1>
+              <p>Perpustakaan digital pribadi yang ikut ke mana pun Anda pergi.</p>
+              <div className="hero-foot"><span><CheckCircle2 size={15}/> Tersimpan di cloud</span><span><CheckCircle2 size={15}/> Progres tersinkronisasi</span></div>
+            </div>
+            <div className="hero-art" aria-hidden="true">
+              <div className="art-sun"></div>
+              {bestsellers[0]?.sold > 0 && <div className="art-label"><span>BEST</span><span>SELLER</span></div>}
+              {[['book-one', bestsellers[1]], ['book-two', bestsellers[0]], ['book-three', bestsellers[2]]].map(([cls, b]) => (
+                <div key={cls} className={`art-book ${cls}${b?.cover_thumb ? ' has-cover' : ''}`}>
+                  {b?.cover_thumb && <img src={b.cover_thumb} alt="" draggable="false"/>}
+                </div>
+              ))}
+              <div className="art-line"></div>
+            </div>
+          </section>
+
+          <div className="tabs-bar" role="tablist">
+            <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
+            <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
+            {isAdmin && (
+              <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
+                <ClipboardList size={16}/> Pesanan{pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
+              </button>
+            )}
+          </div>
+
+          {tab === 'shelf' && (
+          <section className="shelf-section">
+            <div className="section-heading">
+              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
+              <div className="shelf-tools">
+                <label className="searchbox"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
+                <select className="sort-select" value={sortMode} onChange={e => changeSort(e.target.value)} title="Urutkan buku" aria-label="Urutkan buku">
+                  <option value="manual">Urutan saya</option>
+                  <option value="title-asc">Judul A–Z</option>
+                  <option value="title-desc">Judul Z–A</option>
+                  <option value="author-asc">Penulis A–Z</option>
+                </select>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className={`owner-toggle${showOwner ? ' on' : ''}`}
+                    onClick={toggleOwner}
+                    title={showOwner ? 'Sembunyikan keterangan pengunggah' : 'Tampilkan keterangan pengunggah'}
+                    aria-pressed={showOwner}
+                  >
+                    {showOwner ? <Eye size={16}/> : <EyeOff size={16}/>}
+                    <span>Pengunggah</span>
+                  </button>
+                )}
+                <button className="primary-button" onClick={onAddBookClick} disabled={uploadBusy}>
+                  {uploadBusy ? <LoaderCircle size={17} className="spin"/> : <Plus size={18}/>}
+                  {uploadBusy
+                    ? (uploadProgress.total > 1 ? `Mengunggah (${uploadProgress.current}/${uploadProgress.total})…` : 'Mengunggah…')
+                    : 'Tambah buku'}
+                </button>
+                <input ref={fileInput} type="file" accept=".epub,application/epub+zip" multiple hidden onChange={uploadBook}/>
+              </div>
+            </div>
+
+            {loadingBooks ? <div className="empty-state"><LoaderCircle className="spin" size={24}/><p>Memuat koleksi dari cloud…</p></div> :
+             filteredBooks.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon"><BookMarked size={27}/></div>
+                <h3>{query ? 'Buku tidak ditemukan' : 'Rak buku masih kosong'}</h3>
+                <p>{query ? 'Coba kata kunci yang berbeda.' : canUpload ? 'Unggah file EPUB Anda. Anda bisa memilih banyak file sekaligus atau menyeretnya ke sini.' : 'Beli ebook di tab Katalog. Buku yang sudah dibeli akan muncul di sini.'}</p>
+                {!query && <button className="secondary-button" onClick={onAddBookClick} disabled={uploadBusy}><UploadCloud size={17}/> {uploadBusy ? 'Mengunggah…' : 'Unggah EPUB (Bisa Banyak)'}</button>}
+              </div>
+             ) : (
+              <>
+              {!isAdmin && !canUpload && books.length > 0 && (
+                <p className="info-banner">Kamu baru memiliki buku contoh. Beli ebook di tab Katalog untuk membuka fitur menambah buku sendiri.</p>
+              )}
+              {!query && sortMode === 'manual' && filteredBooks.length > 1 && <p className="drag-hint">Tahan lalu geser sampul untuk mengatur urutan buku.</p>}
+              <div className="book-grid">
+                {filteredBooks.map((book, index) => (
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    cover={covers[book.id]}
+                    progress={progress[book.id]}
+                    index={index}
+                    onOpen={() => openBook(book)}
+                    onEdit={(e) => startEditBook(book, e)}
+                    onDelete={() => deleteBook(book)}
+                    onDownload={() => downloadEpub(book, notify)}
+                    shared={!isAdmin && book.user_id !== userId}
+                    ownerLabel={isAdmin && book.user_id !== userId ? (book.uploader_email || 'pengguna lain') : null}
+                    isAdmin={isAdmin}
+                    showOwner={showOwner}
+                    onAccess={() => openAccess(book)}
+                    isSample={!!book.is_sample}
+                    onToggleSample={() => toggleSample(book)}
+                    dragging={draggingId === book.id}
+                    onPointerDown={(query || sortMode !== 'manual') ? undefined : (e) => startCardDrag(e, book.id)}
+                  />
+                ))}
+              </div>
+              </>
+             )}
+            <div className="privacy-note"><span className="privacy-dot"></span> Buku yang Anda unggah dapat tampil di katalog dan dibeli pengguna lain. Masuk dengan akun yang sama untuk mengaksesnya di perangkat lain.</div>
+          </section>
+          )}
+
+          {tab === 'catalog' && (
+            <CatalogSection
+              items={catalogItems}
+              loading={catalogLoading}
+              error={catalogError}
+              ownedIds={new Set(books.map(b => b.id))}
+              ownedKeys={new Set(books.map(b => bookKey(b.title, b.author)))}
+              selected={catalogSelected}
+              onToggle={toggleCatalogSelect}
+              isAdmin={isAdmin}
+              orders={orders}
+              onCheckout={() => setCheckoutOpen(true)}
+              onClear={() => setCatalogSelected([])}
+            />
+          )}
+
+          {tab === 'orders' && isAdmin && (
+            <OrdersSection orders={orders} onApprove={approveOrder} onReject={rejectOrder} />
+          )}
+        </main>
+      )}
+
+      {checkoutOpen && (
+        <CheckoutModal
+          items={catalogItems.filter(i => catalogSelected.includes(i.id) && !books.some(b => b.id === i.book_id || bookKey(b.title, b.author) === bookKey(i.title, i.author)))}
+          email={session?.user?.email || ''}
+          onClose={() => setCheckoutOpen(false)}
+          onSubmit={submitOrder}
+          onConfirmed={() => {
+            setCheckoutOpen(false);
+            notify('Pesanan tercatat. Lanjutkan konfirmasi di WhatsApp, admin akan menerima pesananmu.');
+          }}
+        />
+      )}
+
+      {editingBook && (
+        <div className="modal-backdrop" onClick={() => !editBusy && setEditingBook(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">
+                <Pencil size={18} className="modal-icon-teal" />
+                <span>Ubah Informasi Buku</span>
+              </div>
+              <button
+                className="modal-close-btn"
+                onClick={() => setEditingBook(null)}
+                disabled={editBusy}
+                title="Tutup"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="modal-form">
+              <label>
+                Judul Buku
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  placeholder="Masukkan judul baru…"
+                  required
+                  autoFocus
+                />
+              </label>
+              <label>
+                Penulis
+                <input
+                  type="text"
+                  value={editAuthor}
+                  onChange={e => setEditAuthor(e.target.value)}
+                  placeholder="Nama penulis…"
+                />
+              </label>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setEditingBook(null)}
+                  disabled={editBusy}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={editBusy || !editTitle.trim()}
+                >
+                  {editBusy ? <LoaderCircle size={16} className="spin" /> : null}
+                  {editBusy ? 'Menyimpan…' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {accessBook && (
+        <div className="modal-backdrop" onClick={() => !accessBusy && setAccessBook(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">
+                <Users size={18} className="modal-icon-teal" />
+                <span>Kelola Akses Buku</span>
+              </div>
+              <button className="modal-close-btn" onClick={() => setAccessBook(null)} disabled={accessBusy} title="Tutup">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="access-book-title">{accessBook.title}</p>
+            <form onSubmit={grantAccess} className="modal-form">
+              <label>
+                Email pembeli (boleh lebih dari satu, pisahkan dengan koma)
+                <input
+                  type="text"
+                  value={accessInput}
+                  onChange={e => setAccessInput(e.target.value)}
+                  placeholder="nama@email.com, lainnya@email.com"
+                  autoFocus
+                />
+              </label>
+              <button type="submit" className="primary-button" disabled={accessBusy || !accessInput.trim()}>
+                {accessBusy ? <LoaderCircle size={16} className="spin" /> : null}
+                {accessBusy ? 'Memberi akses…' : 'Beri Akses'}
+              </button>
+            </form>
+            <div className="access-list">
+              <div className="access-list-head">Pemilik akses ({accessList.length})</div>
+              {accessLoading ? (
+                <div className="access-empty"><LoaderCircle size={15} className="spin" /> Memuat…</div>
+              ) : accessList.length === 0 ? (
+                <div className="access-empty">Belum ada email yang diberi akses.</div>
+              ) : accessList.map(row => (
+                <div className="access-row" key={row.id}>
+                  <span title={row.user_email}>{row.user_email}</span>
+                  <button className="delete-button" title="Cabut akses" onClick={() => revokeAccess(row)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notice && <div className={`toast ${notice.kind}`}><span>{notice.kind === 'error' ? <AlertCircle size={17}/> : <CheckCircle2 size={17}/>}</span>{notice.message}<button onClick={() => setNotice(null)}><X size={15}/></button></div>}
+    </div>
+  );
 }
-@keyframes slideInLeft{from{transform:translateX(-100%)}to{transform:translateX(0)}}
 
-/* ============================================================
-   EPUB.JS HIGHLIGHTS (STABILO) VISIBILITY & POSITIONING FIXES
-   ============================================================ */
-
-.epub-container,
-.epub-view {
-  position: relative;
+function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDownload, onAccess, onToggleSample, isSample, shared, isAdmin, ownerLabel, showOwner, dragging, onPointerDown}) {
+  const colors = coverColors(book.title);
+  const percentage = Math.min(100, Math.max(0, Number(progress?.percentage || 0)));
+  return <article
+    className={`book-card${dragging ? ' is-drag-source' : ''}`}
+    data-id={book.id}
+    onPointerDown={onPointerDown}
+    onContextMenu={e => { if (onPointerDown && e.pointerType !== 'mouse' && e.nativeEvent?.pointerType !== 'mouse') e.preventDefault(); }}
+    onDragStart={e => e.preventDefault()}
+  >
+    <button className="cover-button" onClick={onOpen} aria-label={`Baca ${book.title}`}>
+      {cover ? (
+        <div className="book-cover-image-wrap">
+          <img src={cover} alt={book.title} className="book-cover-img" />
+        </div>
+      ) : (
+        <div className="book-cover" style={{'--cover-bg': colors[0], '--cover-ink': colors[1]}}>
+          <div className="cover-topline">RUANG BACA · E-BOOK</div>
+          <div className="cover-decoration"><span></span><span></span><span></span></div>
+          <div className="cover-title">{book.title}</div>
+          <div className="cover-author">{book.author}</div>
+          <div className="cover-bottom">RB / {String(index + 1).padStart(2, '0')}</div>
+        </div>
+      )}
+      <span className="cover-open"><BookOpen size={16}/> Baca buku</span>
+    </button>
+    <div className="book-details">
+      <div className="book-title-row">
+        <h3 title={book.title}>{book.title}</h3>
+        <div className="book-card-actions">
+          {shared ? (
+            <>
+              <span className="shared-badge" title={isSample ? 'Buku contoh dari admin' : 'Buku ini dibagikan oleh admin'}>{isSample ? 'Contoh' : 'Dibagikan'}</span>
+              <button className="download-button" title="Unduh file EPUB" onClick={onDownload}>
+                <Download size={14}/>
+              </button>
+            </>
+          ) : (
+            <>
+              {isAdmin && (
+                <>
+                  <button className={`sample-button${isSample ? ' on' : ''}`} title={isSample ? 'Buku contoh untuk semua pengguna (klik untuk batalkan)' : 'Jadikan buku contoh untuk semua pengguna'} onClick={onToggleSample}>
+                    <Gift size={14}/>
+                  </button>
+                  <button className="access-button" title="Kelola akses pembaca" onClick={onAccess}>
+                    <Users size={14}/>
+                  </button>
+                </>
+              )}
+              <button className="edit-button" title="Ubah judul atau penulis" onClick={onEdit}>
+                <Pencil size={13}/>
+              </button>
+              <button className="download-button" title="Unduh file EPUB" onClick={onDownload}>
+                <Download size={14}/>
+              </button>
+              <button className="delete-button" title="Hapus buku" onClick={onDelete}>
+                <Trash2 size={15}/>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      <p className="book-author">{book.author}</p>
+      {isAdmin && showOwner && <p className={`owner-tag${ownerLabel ? '' : ' mine'}`} title={ownerLabel ? `Diunggah oleh ${ownerLabel}` : 'Diunggah oleh admin'}>{ownerLabel ? `Dari: ${ownerLabel}` : 'Milik saya'}</p>}
+      <div className="book-meta"><span>{percentage >= 100 ? 'Selesai dibaca' : percentage > 0 ? `${Math.max(1, Math.round(percentage))}% dibaca` : 'Belum dibaca'}</span></div>
+      <div className="progress-track"><span style={{width: `${percentage}%`}}/></div>
+    </div>
+  </article>;
 }
 
-.epub-view iframe {
-  position: relative !important;
-  z-index: 1 !important;
-  display: block !important;
+function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded, notify}) {
+  const viewerRef = useRef(null);
+  const renditionRef = useRef(null);
+  const epubRef = useRef(null);
+  const saveTimer = useRef(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState('');
+  const [toc, setToc] = useState([]);
+  const [navPanelOpen, setNavPanelOpen] = useState(false);
+  const [navActiveTab, setNavActiveTab] = useState('toc'); // 'toc' | 'bookmarks' | 'highlights'
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const [bookmarks, setBookmarks] = useState(() => getStoredBookmarks(book.id));
+  const [highlights, setHighlights] = useState(() => getStoredHighlights(book.id));
+  const highlightsRef = useRef(highlights);
+  highlightsRef.current = highlights;
+
+  const [selectionPopover, setSelectionPopover] = useState(null);
+  const [activeHighlight, setActiveHighlight] = useState(null);
+
+  const [current, setCurrent] = useState(() => {
+    let initPct = Number(savedProgress?.percentage || 0);
+    let initCfi = savedProgress?.cfi || null;
+    if (!initCfi) {
+      try {
+        const local = localStorage.getItem(`rb_progress_${book.id}`);
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (parsed.cfi) {
+            initCfi = parsed.cfi;
+            initPct = Number(parsed.percentage || 0);
+          }
+        }
+      } catch {}
+    }
+    return { percentage: initPct, cfi: initCfi };
+  });
+
+  const [bookTitle, setBookTitle] = useState(book.title);
+
+  useEffect(() => {
+    if (book.title) setBookTitle(book.title);
+  }, [book.title]);
+  const [locationLabel, setLocationLabel] = useState(() => {
+    const pct = Number(savedProgress?.percentage || 0);
+    return pct > 0 ? `${Math.round(pct)}% selesai` : 'Mulai membaca';
+  });
+
+  const isCurrentBookmarked = useMemo(() => {
+    if (!current?.cfi) return false;
+    return bookmarks.some(b => b.cfi === current.cfi || (b.label === locationLabel && Math.abs((b.percentage || 0) - (current.percentage || 0)) < 0.5));
+  }, [bookmarks, current?.cfi, current?.percentage, locationLabel]);
+
+  const [readerTheme, setReaderTheme] = useState(() => localStorage.getItem('rb_reader_theme') || 'sepia');
+  const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('rb_reader_fontsize') || 18));
+  const [fontFamily, setFontFamily] = useState(() => localStorage.getItem('rb_reader_font') || 'Georgia');
+  const [lineHeight, setLineHeight] = useState(() => Number(localStorage.getItem('rb_reader_lineheight') || 1.6));
+  const [pageMargin, setPageMargin] = useState(() => Number(localStorage.getItem('rb_reader_margin') || 40));
+  const [textAlign, setTextAlign] = useState(() => localStorage.getItem('rb_reader_align') || 'justify');
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('rb_reader_viewmode') || 'paginated');
+
+  useEffect(() => {
+    localStorage.setItem('rb_reader_theme', readerTheme);
+    localStorage.setItem('rb_reader_fontsize', fontSize);
+    localStorage.setItem('rb_reader_font', fontFamily);
+    localStorage.setItem('rb_reader_lineheight', lineHeight);
+    localStorage.setItem('rb_reader_margin', pageMargin);
+    localStorage.setItem('rb_reader_align', textAlign);
+    localStorage.setItem('rb_reader_viewmode', viewMode);
+  }, [readerTheme, fontSize, fontFamily, lineHeight, pageMargin, textAlign, viewMode]);
+
+  const turnRef = useRef(null);
+  const turningRef = useRef(false);
+  const swipeRef = useRef(null);
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+
+  const calculateProgress = useCallback((epubObj, loc) => {
+    if (!loc || !loc.start) return { percentage: 0, label: 'Mulai membaca' };
+
+    let pct = null;
+    // 1. If epub locations has been generated
+    if (epubObj?.locations && epubObj.locations.total > 0 && loc.start.cfi) {
+      try {
+        const p = epubObj.locations.percentageFromCfi(loc.start.cfi);
+        if (typeof p === 'number' && !isNaN(p) && p >= 0) {
+          pct = Math.max(0, Math.min(100, p * 100));
+        }
+      } catch (err) {}
+    }
+
+    // 2. If epub.js relocation already has start.percentage
+    if (pct === null && typeof loc.start.percentage === 'number' && !isNaN(loc.start.percentage) && loc.start.percentage > 0) {
+      pct = Math.max(0, Math.min(100, loc.start.percentage * 100));
+    }
+
+    // 3. Fallback: spine item / chapter index
+    if (pct === null) {
+      const spineItems = epubObj?.spine?.items || [];
+      const spineTotal = spineItems.length;
+      const spineIndex = loc.start.index ?? 0;
+      if (loc.atEnd) {
+        pct = 100;
+      } else if (loc.atStart && spineIndex === 0) {
+        pct = 0;
+      } else if (spineTotal > 0) {
+        pct = Math.min(99, Math.max(1, ((spineIndex + 0.5) / spineTotal) * 100));
+      } else {
+        pct = 0;
+      }
+    }
+
+    const rounded = Math.round(pct);
+    let label = `${rounded}% selesai`;
+    // Nomor halaman nyata (per layar) di dalam bab yang sedang dibuka.
+    // Selalu naik/turun 1 setiap klik Next/Previous.
+    const dp = loc.start.displayed;
+    const spineTotal = epubObj?.spine?.items?.length || 0;
+    const chapterNo = (loc.start.index ?? 0) + 1;
+    if (dp && dp.total > 1) {
+      label = `Hal. ${dp.page} dari ${dp.total} (bab ${chapterNo}/${spineTotal}) · ${rounded}% selesai`;
+    } else if (spineTotal > 1) {
+      label = `Bab ${chapterNo} dari ${spineTotal} · ${rounded}% selesai`;
+    }
+
+    return { percentage: pct, label };
+  }, []);
+
+  const applyReadingStyles = useCallback((r, theme, font, size, lineH, margin, align) => {
+    if (!r) return;
+    const cfg = THEME_CONFIG[theme] || THEME_CONFIG.light;
+    const fontObj = FONT_FAMILIES.find(f => f.id === font);
+    const fontCss = fontObj ? fontObj.family : 'Georgia, serif';
+
+    r.themes.default({
+      '::selection': {
+        'background': 'rgba(13, 148, 136, 0.3) !important'
+      },
+      '.epubjs-hl, svg g.epubjs-hl': {
+        'cursor': 'pointer !important'
+      },
+      '.epubjs-hl rect, g.epubjs-hl rect': {
+        'cursor': 'pointer !important',
+        'shape-rendering': 'auto !important'
+      },
+      '.rb-hl-yellow rect, g.rb-hl-yellow rect, g[data-color="yellow"] rect': { 'fill': '#fde047 !important', 'fill-opacity': '0.55 !important' },
+      '.rb-hl-green rect, g.rb-hl-green rect, g[data-color="green"] rect': { 'fill': '#86efac !important', 'fill-opacity': '0.55 !important' },
+      '.rb-hl-blue rect, g.rb-hl-blue rect, g[data-color="blue"] rect': { 'fill': '#93c5fd !important', 'fill-opacity': '0.55 !important' },
+      '.rb-hl-pink rect, g.rb-hl-pink rect, g[data-color="pink"] rect': { 'fill': '#f472b6 !important', 'fill-opacity': '0.55 !important' },
+      '.rb-hl-orange rect, g.rb-hl-orange rect, g[data-color="orange"] rect': { 'fill': '#fdba74 !important', 'fill-opacity': '0.55 !important' },
+      '.rb-hl-purple rect, g.rb-hl-purple rect, g[data-color="purple"] rect': { 'fill': '#d8b4fe !important', 'fill-opacity': '0.55 !important' },
+      'body': {
+        'background': `${cfg.paperBg} !important`,
+        'background-color': `${cfg.paperBg} !important`,
+        'color': `${cfg.textColor} !important`,
+        'font-family': `${fontCss} !important`,
+        'font-size': `${size}px !important`,
+        'line-height': `${lineH} !important`,
+        'padding': `0 ${margin}px !important`,
+        'margin': '0 auto !important',
+        'text-align': `${align} !important`,
+        'text-justify': 'inter-word !important',
+        'hyphens': 'auto !important',
+        '-webkit-hyphens': 'auto !important',
+        '-webkit-font-smoothing': 'antialiased'
+      },
+      'p, div, span, li': {
+        'color': `${cfg.textColor} !important`,
+        'font-family': `${fontCss} !important`,
+        'font-size': `${size}px !important`,
+        'line-height': `${lineH} !important`,
+        'text-align': `${align} !important`,
+        'text-justify': 'inter-word !important',
+        'hyphens': 'auto !important',
+        '-webkit-hyphens': 'auto !important',
+        'margin-bottom': '1em !important'
+      },
+      'body *:not(#rb-font):not(pre):not(code):not(kbd):not(samp)': {
+        'font-family': `${fontCss} !important`
+      },
+      'h1, h2, h3, h4, h5, h6': {
+        'color': `${cfg.textColor} !important`,
+        'font-family': `${fontCss} !important`,
+        'text-align': align === 'justify' ? 'left' : align
+      },
+      'a': {
+        'color': `${cfg.linkColor} !important`
+      },
+      'html, body': {
+        'touch-action': 'pan-y'
+      },
+      'img': {
+        'max-width': '100% !important',
+        'height': 'auto !important'
+      }
+    });
+
+    r.themes.fontSize(`${size}px`);
+  }, []);
+
+  const onHighlightClicked = useCallback((hlId, cfiRange, event) => {
+    const found = highlightsRef.current.find(h => h.id === hlId || h.cfi_range === cfiRange);
+    if (!found) return;
+    let x = window.innerWidth / 2;
+    let y = 160;
+    if (event?.target?.getBoundingClientRect) {
+      const iframe = viewerRef.current?.querySelector('iframe');
+      const iframeBox = iframe ? iframe.getBoundingClientRect() : { top: 0, left: 0 };
+      const rect = event.target.getBoundingClientRect();
+      x = iframeBox.left + rect.left + rect.width / 2;
+      y = iframeBox.top + rect.top;
+    }
+    setActiveHighlight({ ...found, x, y });
+  }, []);
+
+  const syncSvgRectAttributes = useCallback((r) => {
+    try {
+      r?.views()?.forEach(v => {
+        v?.pane?.render?.();
+        const svgEl = v?.pane?.element || viewerRef.current?.querySelector('svg');
+        if (svgEl) {
+          svgEl.style.zIndex = '15';
+          svgEl.querySelectorAll('g').forEach(g => {
+            const colorId = g.dataset?.color || (g.className?.baseVal || '').match(/rb-hl-([a-z]+)/)?.[1];
+            const hex = HIGHLIGHT_COLORS[colorId]?.hex || g.getAttribute('fill') || '#fde047';
+            g.querySelectorAll('rect').forEach(rect => {
+              rect.setAttribute('fill', hex);
+              rect.setAttribute('fill-opacity', '0.55');
+              rect.style.fill = hex;
+              rect.style.fillOpacity = '0.55';
+            });
+          });
+        }
+      });
+    } catch {}
+  }, []);
+
+  const registerHighlights = useCallback((r, hls, theme) => {
+    if (!r?.annotations) return;
+    hls.forEach(hl => {
+      try {
+        r.annotations.highlight(
+          hl.cfi_range,
+          { id: hl.id, color: hl.color },
+          (e) => {
+            if (e?.stopPropagation) e.stopPropagation();
+            onHighlightClicked(hl.id, hl.cfi_range, e);
+          },
+          `rb-hl-${hl.color}`,
+          getHighlightStyle(hl.color, theme)
+        );
+      } catch (e) {
+        console.warn('Gagal memuat anotasi:', e);
+      }
+    });
+
+    setTimeout(() => {
+      syncSvgRectAttributes(r);
+    }, 50);
+  }, [onHighlightClicked, syncSvgRectAttributes]);
+
+  const attachFonts = useCallback((r) => {
+    if (!r) return;
+    r.hooks.content.register((contents) =>
+      contents.addStylesheet(
+        'https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Open+Sans:ital,wght@0,400;0,600;1,400&display=swap'
+      )
+    );
+  }, []);
+
+  const attachSwipe = useCallback((r) => {
+    if (!r) return;
+    r.on('touchstart', (e) => {
+      if (viewModeRef.current === 'scroll' || turningRef.current || (e.touches && e.touches.length > 1)) {
+        swipeRef.current = null;
+        return;
+      }
+      const t = e.touches?.[0];
+      if (!t) { swipeRef.current = null; return; }
+      swipeRef.current = { x: t.screenX, y: t.screenY, t0: Date.now(), dx: 0, active: false, dead: false };
+    });
+    r.on('touchmove', (e, contents) => {
+      const s = swipeRef.current;
+      if (!s || s.dead) return;
+      const t = e.touches?.[0];
+      if (!t) return;
+      const dx = t.screenX - s.x;
+      const dy = t.screenY - s.y;
+      if (!s.active) {
+        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; }
+        if (Math.abs(dx) < 10) return;
+        const sel = contents?.window?.getSelection?.();
+        if (sel && sel.toString().trim()) { s.dead = true; return; }
+        s.active = true;
+        setSelectionPopover(null);
+      }
+      s.dx = dx;
+      const loc = r.currentLocation?.();
+      const blocked = (dx < 0 && loc?.atEnd) || (dx > 0 && loc?.atStart);
+      paperTransform(viewerRef.current, blocked ? dx * 0.25 : dx, false);
+    });
+    r.on('touchend', () => {
+      const s = swipeRef.current;
+      swipeRef.current = null;
+      if (!s || !s.active) return;
+      const dt = Math.max(1, Date.now() - s.t0);
+      const fast = Math.abs(s.dx) / dt > 0.5 && Math.abs(s.dx) > 30;
+      if (Math.abs(s.dx) > 70 || fast) {
+        turnRef.current?.(s.dx < 0 ? 'next' : 'prev');
+      } else {
+        const el = viewerRef.current;
+        paperTransform(el, 0, true);
+        setTimeout(() => paperReset(el), 240);
+      }
+    });
+    r.on('keyup', (e) => {
+      if (e.key === 'ArrowRight') turnRef.current?.('next');
+      else if (e.key === 'ArrowLeft') turnRef.current?.('prev');
+    });
+  }, []);
+
+  const handleSelection = useCallback((cfiRange, contents) => {
+    if (!cfiRange || !contents) return;
+    const sel = contents.window.getSelection();
+    const text = sel ? sel.toString().trim() : '';
+    if (!text) return;
+
+    const range = sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    if (!range) return;
+
+    const rect = range.getBoundingClientRect();
+    const iframe = viewerRef.current?.querySelector('iframe');
+    const iframeBox = iframe ? iframe.getBoundingClientRect() : { top: 0, left: 0 };
+
+    const posX = iframeBox.left + rect.left + rect.width / 2;
+    const posY = iframeBox.top + rect.top;
+    const clampedX = Math.max(160, Math.min(window.innerWidth - 160, posX));
+    const isNearTop = posY < 130;
+    const clampedY = isNearTop ? (iframeBox.top + rect.bottom + 50) : (posY - 12);
+
+    setSelectionPopover({
+      cfiRange,
+      text,
+      x: clampedX,
+      y: clampedY,
+      placement: isNearTop ? 'bottom' : 'top',
+      contents
+    });
+  }, []);
+
+  useEffect(() => {
+    if (renditionRef.current) {
+      applyReadingStyles(renditionRef.current, readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign);
+    }
+  }, [readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign, applyReadingStyles]);
+
+  // Sync Bookmarks & Highlights from Supabase (if table exists)
+  useEffect(() => {
+    if (!supabase || !userId || !book.id) return;
+    supabase.from('book_bookmarks').select('*').eq('book_id', book.id).order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          setBookmarks(prev => {
+            const map = new Map();
+            data.forEach(item => map.set(item.cfi, item));
+            prev.forEach(item => { if (!map.has(item.cfi)) map.set(item.cfi, item); });
+            const merged = Array.from(map.values());
+            saveStoredBookmarks(book.id, merged);
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+
+    supabase.from('book_highlights').select('*').eq('book_id', book.id).order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          setHighlights(prev => {
+            const map = new Map();
+            data.forEach(item => map.set(item.cfi_range, item));
+            prev.forEach(item => { if (!map.has(item.cfi_range)) map.set(item.cfi_range, item); });
+            const merged = Array.from(map.values());
+            saveStoredHighlights(book.id, merged);
+            if (renditionRef.current) {
+              registerHighlights(renditionRef.current, merged, readerTheme);
+            }
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [book.id, userId, registerHighlights, readerTheme]);
+
+  // Dismiss selection or active highlight popover on click outside
+  useEffect(() => {
+    const handleDocClick = (e) => {
+      if (
+        !e.target.closest('.floating-stabilo-toolbar') &&
+        !e.target.closest('.active-highlight-popover')
+      ) {
+        setSelectionPopover(null);
+        setActiveHighlight(null);
+      }
+    };
+    window.addEventListener('mousedown', handleDocClick);
+    return () => window.removeEventListener('mousedown', handleDocClick);
+  }, []);
+
+  const persist = useCallback(async (cfi, percentage) => {
+    if (!cfi) return;
+    const finalPct = Math.max(0, Math.min(100, Number(percentage || 0)));
+    const now = new Date().toISOString();
+
+    // 1. Immediately cache in localStorage
+    try {
+      localStorage.setItem(`rb_progress_${book.id}`, JSON.stringify({
+        book_id: book.id,
+        cfi,
+        percentage: finalPct,
+        updated_at: now
+      }));
+    } catch {}
+
+    // 2. Immediately notify parent state so BookCard updates instantly
+    onProgress?.({
+      book_id: book.id,
+      cfi,
+      percentage: finalPct,
+      updated_at: now
+    });
+
+    // 3. Upsert to Supabase
+    try {
+      const uid = userId || (await supabase.auth.getUser())?.data?.user?.id;
+      if (!uid) return;
+      const row = {
+        user_id: uid,
+        book_id: book.id,
+        cfi,
+        percentage: finalPct,
+        updated_at: now
+      };
+      await supabase.from('reading_progress').upsert(row, { onConflict: 'user_id,book_id' });
+    } catch (e) {
+      console.warn('Gagal sinkronisasi progres ke cloud:', e);
+    }
+  }, [book.id, userId, onProgress]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let rendition;
+    let epub;
+    const start = async () => {
+      setBusy(true); setError('');
+      try {
+        const { data, error: downloadError } = await supabase.storage.from('epub-files').download(book.file_path);
+        if (downloadError) throw downloadError;
+        if (cancelled) return;
+        const buffer = await data.arrayBuffer();
+        epub = ePub(buffer);
+        epubRef.current = epub;
+        await epub.ready;
+        if (cancelled) { epub.destroy(); return; }
+        const metadata = epub.package?.metadata || {};
+        if (!book.title && metadata.title) setBookTitle(metadata.title);
+        setToc(epub.navigation?.toc || []);
+
+        extractCoverFromBook(epub).then(cUrl => {
+          if (cUrl && !cancelled) {
+            saveCoverToDb(book.id, cUrl);
+            onCoverLoaded?.(book.id, cUrl);
+          }
+        });
+
+        const spread = viewMode === 'spread' ? 'always' : 'none';
+        const flow = viewMode === 'scroll' ? 'scrolled-doc' : 'paginated';
+        const manager = viewMode === 'scroll' ? 'continuous' : 'default';
+
+        rendition = epub.renderTo(viewerRef.current, { width: '100%', height: '100%', spread, flow, manager });
+        renditionRef.current = rendition;
+
+        applyReadingStyles(rendition, readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign);
+
+        // Register highlights
+        registerHighlights(rendition, highlightsRef.current, readerTheme);
+        attachFonts(rendition);
+        attachSwipe(rendition);
+
+        rendition.on('selected', (cfiRange, contents) => {
+          handleSelection(cfiRange, contents);
+        });
+
+        rendition.on('click', () => {
+          setSelectionPopover(null);
+          setActiveHighlight(null);
+        });
+
+        rendition.on('relocated', location => {
+          setSelectionPopover(null);
+          setActiveHighlight(null);
+          if (!location?.start?.cfi) return;
+          const cfi = location.start.cfi;
+          const { percentage, label } = calculateProgress(epub, location);
+          setCurrent({cfi, percentage});
+          setLocationLabel(label);
+          clearTimeout(saveTimer.current);
+          saveTimer.current = setTimeout(() => persist(cfi, percentage), 700);
+        });
+
+        // Load cached locations or generate in background
+        const locKey = `rb_loc_${book.id}`;
+        const cachedLoc = localStorage.getItem(locKey);
+        let locationsPromise;
+        if (cachedLoc) {
+          try {
+            epub.locations.load(cachedLoc);
+            locationsPromise = Promise.resolve();
+          } catch {
+            locationsPromise = epub.locations.generate(1000);
+          }
+        } else {
+          locationsPromise = epub.locations.generate(1000);
+        }
+
+        locationsPromise
+          .then(() => {
+            if (cancelled) return;
+            try {
+              localStorage.setItem(locKey, epub.locations.save());
+            } catch {}
+
+            const curr = renditionRef.current?.currentLocation?.();
+            if (curr?.start?.cfi) {
+              const { percentage, label } = calculateProgress(epub, curr);
+              setCurrent({ cfi: curr.start.cfi, percentage });
+              setLocationLabel(label);
+              persist(curr.start.cfi, percentage);
+            }
+          })
+          .catch(e => console.warn('Gagal menyiapkan lokasi epub:', e));
+
+        const targetCfi = current.cfi || savedProgress?.cfi;
+        await rendition.display(targetCfi || undefined);
+        if (!cancelled) setBusy(false);
+      } catch (e) {
+        if (!cancelled) { setError(e.message || 'Buku tidak dapat dibuka.'); setBusy(false); }
+      }
+    };
+    start();
+    return () => {
+      cancelled = true;
+      clearTimeout(saveTimer.current);
+      try { rendition?.destroy(); epub?.destroy(); } catch {}
+      renditionRef.current = null; epubRef.current = null;
+    };
+  }, [book.id, book.file_path]);
+
+  const handleViewModeChange = async (mode) => {
+    setViewMode(mode);
+    if (!epubRef.current || !viewerRef.current) return;
+    const targetCfi = current.cfi || savedProgress?.cfi;
+    try { renditionRef.current?.destroy(); } catch {}
+
+    const spread = mode === 'spread' ? 'always' : 'none';
+    const flow = mode === 'scroll' ? 'scrolled-doc' : 'paginated';
+    const manager = mode === 'scroll' ? 'continuous' : 'default';
+
+    const rendition = epubRef.current.renderTo(viewerRef.current, {
+      width: '100%',
+      height: '100%',
+      spread,
+      flow,
+      manager
+    });
+    renditionRef.current = rendition;
+
+    applyReadingStyles(rendition, readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign);
+    registerHighlights(rendition, highlightsRef.current, readerTheme);
+    attachFonts(rendition);
+        attachSwipe(rendition);
+
+    rendition.on('selected', (cfiRange, contents) => {
+      handleSelection(cfiRange, contents);
+    });
+
+    rendition.on('click', () => {
+      setSelectionPopover(null);
+      setActiveHighlight(null);
+    });
+
+    rendition.on('relocated', location => {
+      setSelectionPopover(null);
+      setActiveHighlight(null);
+      if (!location?.start?.cfi) return;
+      const cfi = location.start.cfi;
+      const { percentage, label } = calculateProgress(epubRef.current, location);
+      setCurrent({cfi, percentage});
+      setLocationLabel(label);
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => persist(cfi, percentage), 700);
+    });
+
+    await rendition.display(targetCfi || undefined);
+  };
+
+  const turn = async direction => {
+    const r = renditionRef.current;
+    if (!r || turningRef.current) return;
+    const el = viewerRef.current;
+    if (!el || viewModeRef.current === 'scroll') {
+      direction === 'next' ? r.next() : r.prev();
+      return;
+    }
+    const loc = r.currentLocation?.();
+    if (direction === 'next' ? loc?.atEnd : loc?.atStart) {
+      paperTransform(el, 0, true);
+      setTimeout(() => paperReset(el), 240);
+      return;
+    }
+    turningRef.current = true;
+    const w = el.clientWidth || 600;
+    const sign = direction === 'next' ? -1 : 1;
+    // 1. halaman lama bergeser keluar seperti kertas
+    paperTransform(el, sign * w * 0.5, true, 0);
+    await new Promise(res => setTimeout(res, 190));
+    // 2. ganti isi halaman saat tersembunyi
+    try { await (direction === 'next' ? r.next() : r.prev()); } catch {}
+    await new Promise(res => setTimeout(res, 40));
+    // 3. halaman baru masuk dari sisi berlawanan
+    paperTransform(el, -sign * w * 0.16, false, 0);
+    void el.offsetWidth;
+    paperTransform(el, 0, true, 1);
+    setTimeout(() => { paperReset(el); turningRef.current = false; }, 240);
+  };
+  turnRef.current = turn;
+  const move = direction => turn(direction);
+  const goTo = href => { renditionRef.current?.display(href); };
+
+  const handleClose = () => {
+    clearTimeout(saveTimer.current);
+    if (current.cfi) {
+      persist(current.cfi, current.percentage);
+    }
+    onClose();
+  };
+
+  const saveNow = () => {
+    if (current.cfi) persist(current.cfi, current.percentage);
+    notify('Progres membaca disimpan.');
+  };
+
+  // Bookmark actions
+  const toggleBookmark = () => {
+    if (!current?.cfi) {
+      notify('Lokasi membaca belum siap.', 'error');
+      return;
+    }
+
+    const existing = bookmarks.find(b => b.cfi === current.cfi || (b.label === locationLabel && Math.abs((b.percentage || 0) - (current.percentage || 0)) < 0.5));
+
+    if (existing) {
+      const next = bookmarks.filter(b => b.id !== existing.id);
+      setBookmarks(next);
+      saveStoredBookmarks(book.id, next);
+      if (supabase && userId) {
+        supabase.from('book_bookmarks').delete().match({ user_id: userId, book_id: book.id, cfi: existing.cfi })
+          .then(() => {}).catch(() => {});
+      }
+      notify('Bookmark dihapus');
+    } else {
+      const newBm = {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('bm_' + Date.now()),
+        book_id: book.id,
+        cfi: current.cfi,
+        percentage: current.percentage,
+        label: locationLabel || `${Math.round(current.percentage)}% selesai`,
+        created_at: new Date().toISOString()
+      };
+      const next = [newBm, ...bookmarks];
+      setBookmarks(next);
+      saveStoredBookmarks(book.id, next);
+      if (supabase && userId) {
+        supabase.from('book_bookmarks').insert({
+          id: newBm.id,
+          user_id: userId,
+          book_id: book.id,
+          cfi: newBm.cfi,
+          percentage: newBm.percentage,
+          label: newBm.label
+        }).then(() => {}).catch(() => {});
+      }
+      notify('Halaman ditandai sebagai bookmark');
+    }
+  };
+
+  const handleDeleteBookmark = (bm, e) => {
+    if (e?.stopPropagation) e.stopPropagation();
+    const next = bookmarks.filter(b => b.id !== bm.id && b.cfi !== bm.cfi);
+    setBookmarks(next);
+    saveStoredBookmarks(book.id, next);
+    if (supabase && userId) {
+      supabase.from('book_bookmarks').delete().match({ user_id: userId, book_id: book.id, cfi: bm.cfi })
+        .then(() => {}).catch(() => {});
+    }
+    notify('Bookmark dihapus');
+  };
+
+  // Stabilo (Highlight) actions
+  const handleCreateHighlight = (cfiRange, text, colorId) => {
+    const newHighlight = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('hl_' + Date.now()),
+      book_id: book.id,
+      cfi_range: cfiRange,
+      text,
+      color: colorId,
+      label: locationLabel,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      renditionRef.current?.annotations?.highlight(
+        cfiRange,
+        { id: newHighlight.id, color: colorId },
+        (e) => {
+          if (e?.stopPropagation) e.stopPropagation();
+          onHighlightClicked(newHighlight.id, cfiRange, e);
+        },
+        `rb-hl-${colorId}`,
+        getHighlightStyle(colorId, readerTheme)
+      );
+    } catch (err) {
+      console.warn('Gagal menambah highlight:', err);
+    }
+
+    try {
+      selectionPopover?.contents?.window?.getSelection()?.removeAllRanges();
+    } catch {}
+
+    setHighlights(prev => {
+      const next = [newHighlight, ...prev];
+      saveStoredHighlights(book.id, next);
+      return next;
+    });
+
+    if (supabase && userId) {
+      supabase.from('book_highlights').insert({
+        id: newHighlight.id,
+        user_id: userId,
+        book_id: book.id,
+        cfi_range: cfiRange,
+        text,
+        color: colorId,
+        label: locationLabel
+      }).then(() => {}).catch(() => {});
+    }
+
+    setSelectionPopover(null);
+    notify(`Teks berhasil distabilo (${HIGHLIGHT_COLORS[colorId]?.label || 'Warna'})`);
+  };
+
+  const handleDeleteHighlight = (hl) => {
+    try {
+      renditionRef.current?.annotations?.remove(hl.cfi_range, 'highlight');
+    } catch (err) {
+      console.warn('Gagal menghapus highlight:', err);
+    }
+
+    setHighlights(prev => {
+      const next = prev.filter(h => h.id !== hl.id && h.cfi_range !== hl.cfi_range);
+      saveStoredHighlights(book.id, next);
+      return next;
+    });
+
+    if (supabase && userId) {
+      supabase.from('book_highlights').delete().match({ user_id: userId, book_id: book.id, cfi_range: hl.cfi_range })
+        .then(() => {}).catch(() => {});
+    }
+
+    setActiveHighlight(null);
+    notify('Stabilo dihapus');
+  };
+
+  const handleChangeHighlightColor = (hl, newColor) => {
+    try {
+      renditionRef.current?.annotations?.remove(hl.cfi_range, 'highlight');
+      renditionRef.current?.annotations?.highlight(
+        hl.cfi_range,
+        { id: hl.id, color: newColor },
+        (e) => {
+          if (e?.stopPropagation) e.stopPropagation();
+          onHighlightClicked(hl.id, hl.cfi_range, e);
+        },
+        `rb-hl-${newColor}`,
+        getHighlightStyle(newColor, readerTheme)
+      );
+    } catch (err) {
+      console.warn('Gagal mengubah warna highlight:', err);
+    }
+
+    setHighlights(prev => {
+      const next = prev.map(h => (h.id === hl.id || h.cfi_range === hl.cfi_range) ? { ...h, color: newColor } : h);
+      saveStoredHighlights(book.id, next);
+      return next;
+    });
+
+    if (supabase && userId) {
+      supabase.from('book_highlights').update({ color: newColor }).match({ user_id: userId, book_id: book.id, cfi_range: hl.cfi_range })
+        .then(() => {}).catch(() => {});
+    }
+
+    setActiveHighlight(prev => prev ? { ...prev, color: newColor } : null);
+    notify(`Warna stabilo diubah menjadi ${HIGHLIGHT_COLORS[newColor]?.label || newColor}`);
+  };
+
+  const handleJumpToCfi = (cfi) => {
+    if (!renditionRef.current || !cfi) return;
+    renditionRef.current.display(cfi);
+    if (window.innerWidth < 768) {
+      setNavPanelOpen(false);
+    }
+  };
+
+  return <div className="reader-page">
+    <header className="reader-topbar">
+      <button className="reader-back" onClick={handleClose}><ArrowLeft size={18}/><span>Kembali ke rak</span></button>
+      <div className="reader-book-heading"><span className="reader-label">SEDANG DIBACA</span><strong title={book.title || bookTitle}>{book.title || bookTitle}</strong></div>
+      <div className="reader-actions">
+        {/* Toggle Bookmark button */}
+        <button
+          className={`icon-button ${isCurrentBookmarked ? 'active bookmark-active' : ''}`}
+          title={isCurrentBookmarked ? 'Hapus bookmark halaman ini' : 'Tandai halaman ini (Tambah Bookmark)'}
+          onClick={toggleBookmark}
+        >
+          <Bookmark size={18} fill={isCurrentBookmarked ? 'currentColor' : 'none'} />
+        </button>
+
+        {/* Panel Navigation (TOC, Bookmarks, Highlights) */}
+        <button
+          className={`icon-button ${navPanelOpen ? 'active' : ''}`}
+          title="Daftar Isi, Bookmark & Stabilo"
+          onClick={() => { setNavPanelOpen(v => !v); if (!navPanelOpen) setSettingsOpen(false); }}
+        >
+          <List size={18}/>
+          {(bookmarks.length > 0 || highlights.length > 0) && <span className="nav-badge-dot" />}
+        </button>
+
+        {/* Reading Settings */}
+        <button
+          className={`icon-button ${settingsOpen ? 'active' : ''}`}
+          title="Pengaturan membaca (Reading Settings)"
+          onClick={() => { setSettingsOpen(v => !v); if (!settingsOpen) setNavPanelOpen(false); }}
+        >
+          <SlidersHorizontal size={18}/>
+        </button>
+
+        {/* Download EPUB */}
+        <button
+          className="icon-button"
+          title="Unduh file EPUB"
+          onClick={() => downloadEpub({ ...book, title: book.title || bookTitle }, notify)}
+        >
+          <Download size={17}/>
+        </button>
+
+        {/* Save Progress */}
+        <button className="icon-button" title="Simpan progres sekarang" onClick={saveNow}>
+          <RefreshCw size={16}/>
+        </button>
+      </div>
+    </header>
+
+    <div className="reader-layout">
+      {navPanelOpen && (
+        <aside className="nav-panel">
+          <div className="nav-tabs">
+            <button
+              className={`nav-tab-btn ${navActiveTab === 'toc' ? 'active' : ''}`}
+              onClick={() => setNavActiveTab('toc')}
+            >
+              <List size={13}/>
+              <span>Daftar Isi</span>
+            </button>
+            <button
+              className={`nav-tab-btn ${navActiveTab === 'bookmarks' ? 'active' : ''}`}
+              onClick={() => setNavActiveTab('bookmarks')}
+            >
+              <Bookmark size={13}/>
+              <span>Bookmark</span>
+              {bookmarks.length > 0 && <span className="tab-counter">{bookmarks.length}</span>}
+            </button>
+            <button
+              className={`nav-tab-btn ${navActiveTab === 'highlights' ? 'active' : ''}`}
+              onClick={() => setNavActiveTab('highlights')}
+            >
+              <Highlighter size={13}/>
+              <span>Stabilo</span>
+              {highlights.length > 0 && <span className="tab-counter">{highlights.length}</span>}
+            </button>
+            <button className="nav-panel-close" onClick={() => setNavPanelOpen(false)} title="Tutup">
+              <X size={15}/>
+            </button>
+          </div>
+
+          <div className="nav-panel-content">
+            {navActiveTab === 'toc' && (
+              <div className="toc-tab-body">
+                {toc.length ? (
+                  <nav>{toc.map((item, i) => <TocItem key={`${item.id || item.href || item.label}-${i}`} item={item} onSelect={goTo}/>)}</nav>
+                ) : (
+                  <div className="nav-empty-state">
+                    <div className="nav-empty-icon"><List size={24}/></div>
+                    <h4>Daftar Isi Kosong</h4>
+                    <p>Buku ini tidak menyertakan daftar isi (TOC).</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {navActiveTab === 'bookmarks' && (
+              <div className="bookmarks-tab-body">
+                <button className="quick-add-bookmark-btn" onClick={toggleBookmark}>
+                  <Bookmark size={14} fill={isCurrentBookmarked ? 'currentColor' : 'none'} />
+                  <span>{isCurrentBookmarked ? 'Hapus Bookmark Halaman Ini' : '+ Bookmark Halaman Ini'}</span>
+                </button>
+
+                {bookmarks.length === 0 ? (
+                  <div className="nav-empty-state">
+                    <div className="nav-empty-icon"><Bookmark size={24}/></div>
+                    <h4>Belum Ada Bookmark</h4>
+                    <p>Klik tombol di atas atau ikon pita bookmark di navigasi atas untuk menandai halaman penting.</p>
+                  </div>
+                ) : (
+                  <div className="bookmarks-list">
+                    {bookmarks.map(bm => (
+                      <div
+                        key={bm.id}
+                        className="bookmark-card"
+                        onClick={() => handleJumpToCfi(bm.cfi)}
+                        title="Klik untuk membuka halaman ini"
+                      >
+                        <div className="bookmark-card-main">
+                          <Bookmark size={16} className="bookmark-card-icon" fill="currentColor" />
+                          <div className="bookmark-card-info">
+                            <span className="bookmark-card-label">{bm.label || `${Math.round(bm.percentage || 0)}% selesai`}</span>
+                            {bm.created_at && (
+                              <span className="bookmark-card-date">{formatRelativeTime(bm.created_at)}</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          className="bookmark-card-delete"
+                          title="Hapus bookmark"
+                          onClick={(e) => handleDeleteBookmark(bm, e)}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {navActiveTab === 'highlights' && (
+              <div className="highlights-tab-body">
+                {highlights.length === 0 ? (
+                  <div className="nav-empty-state">
+                    <div className="nav-empty-icon"><Highlighter size={24}/></div>
+                    <h4>Belum Ada Stabilo</h4>
+                    <p>Blok atau pilih kalimat menarik di dalam buku untuk memunculkan pilihan warna stabilo.</p>
+                  </div>
+                ) : (
+                  <div className="highlights-list">
+                    {highlights.map(hl => {
+                      const colorMeta = HIGHLIGHT_COLORS[hl.color] || HIGHLIGHT_COLORS.yellow;
+                      return (
+                        <div
+                          key={hl.id}
+                          className="highlight-card"
+                          style={{ '--hl-color': colorMeta.hex }}
+                          onClick={() => handleJumpToCfi(hl.cfi_range)}
+                          title="Klik untuk melompat ke kutipan ini"
+                        >
+                          <div className="highlight-card-header">
+                            <span className="highlight-badge" style={{ backgroundColor: colorMeta.hex }}>
+                              <Highlighter size={10} />
+                              <span>{colorMeta.label}</span>
+                            </span>
+                            <div className="highlight-meta-right">
+                              {hl.created_at && (
+                                <span className="highlight-card-date">{formatRelativeTime(hl.created_at)}</span>
+                              )}
+                              <button
+                                className="highlight-action-btn"
+                                title="Hapus stabilo ini"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteHighlight(hl); }}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="highlight-quote">“{hl.text}”</p>
+                          {hl.label && (
+                            <div className="highlight-card-footer">
+                              <span>{hl.label}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </aside>
+      )}
+
+      <section className="reader-stage" data-reader-theme={readerTheme} data-view-mode={viewMode}>
+        <div className={`reader-paper ${viewMode === 'spread' ? 'spread' : ''}`}>
+          {busy && <div className="reader-loading"><LoaderCircle size={25} className="spin"/><span>Membuka buku dari cloud…</span></div>}
+          {error && <div className="reader-error"><AlertCircle size={24}/><h3>Buku tidak dapat dibuka</h3><p>{error}</p><button className="secondary-button" onClick={onClose}>Kembali ke koleksi</button></div>}
+          <div ref={viewerRef} className={`epub-viewer ${busy || error ? 'hidden' : ''}`}></div>
+        </div>
+        <footer className="reader-footer">
+          <button className="page-nav" onClick={() => move('prev')} disabled={busy || !!error}><ChevronLeft size={20}/><span>Sebelumnya</span></button>
+          <div className="reader-progress"><div className="reader-progress-label"><span>{locationLabel}</span><span>{Math.round(current.percentage)}%</span></div><div className="progress-track"><span style={{width: `${current.percentage}%`}}/></div></div>
+          <button className="page-nav next" onClick={() => move('next')} disabled={busy || !!error}><span>Berikutnya</span><ChevronRight size={20}/></button>
+        </footer>
+      </section>
+
+      {/* Floating Stabilo Toolbar */}
+      {selectionPopover && (
+        <div
+          className={`floating-stabilo-toolbar ${selectionPopover.placement === 'bottom' ? 'placement-bottom' : 'placement-top'}`}
+          style={{
+            position: 'fixed',
+            left: `${selectionPopover.x}px`,
+            top: `${selectionPopover.y}px`
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="stabilo-toolbar-inner">
+            <div className="stabilo-toolbar-title">
+              <Highlighter size={12} />
+              <span>Stabilo</span>
+            </div>
+            <div className="stabilo-colors">
+              {Object.values(HIGHLIGHT_COLORS).map(color => (
+                <button
+                  key={color.id}
+                  className="stabilo-color-btn"
+                  style={{ backgroundColor: color.hex, borderColor: color.border }}
+                  title={`Stabilo ${color.label}`}
+                  onClick={() => handleCreateHighlight(selectionPopover.cfiRange, selectionPopover.text, color.id)}
+                />
+              ))}
+            </div>
+            <div className="stabilo-toolbar-divider" />
+            <button
+              className="stabilo-dismiss-btn"
+              title="Batal"
+              onClick={() => {
+                try {
+                  selectionPopover.contents?.window?.getSelection()?.removeAllRanges();
+                } catch {}
+                setSelectionPopover(null);
+              }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Active Highlight Popover */}
+      {activeHighlight && (
+        <div
+          className="active-highlight-popover"
+          style={{
+            position: 'fixed',
+            left: `${activeHighlight.x || window.innerWidth / 2}px`,
+            top: `${activeHighlight.y || 160}px`
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="active-highlight-card">
+            <div className="active-highlight-header">
+              <div
+                className="active-highlight-badge"
+                style={{ backgroundColor: HIGHLIGHT_COLORS[activeHighlight.color]?.hex || '#fde047' }}
+              >
+                <Highlighter size={12} />
+                <span>{HIGHLIGHT_COLORS[activeHighlight.color]?.label || 'Stabilo'}</span>
+              </div>
+              <button
+                className="active-highlight-close"
+                onClick={() => setActiveHighlight(null)}
+                title="Tutup"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <p className="active-highlight-quote">“{activeHighlight.text}”</p>
+            <div className="active-highlight-actions">
+              <div className="active-highlight-colors">
+                {Object.values(HIGHLIGHT_COLORS).map(color => (
+                  <button
+                    key={color.id}
+                    className={`mini-color-btn ${activeHighlight.color === color.id ? 'selected' : ''}`}
+                    style={{ backgroundColor: color.hex }}
+                    title={`Ganti warna ke ${color.label}`}
+                    onClick={() => handleChangeHighlightColor(activeHighlight, color.id)}
+                  />
+                ))}
+              </div>
+              <button
+                className="delete-highlight-btn"
+                title="Hapus stabilo ini"
+                onClick={() => handleDeleteHighlight(activeHighlight)}
+              >
+                <Trash2 size={13} />
+                <span>Hapus</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ReadingSettingsDrawer
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        theme={readerTheme}
+        setTheme={setReaderTheme}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        fontFamily={fontFamily}
+        setFontFamily={setFontFamily}
+        lineHeight={lineHeight}
+        setLineHeight={setLineHeight}
+        pageMargin={pageMargin}
+        setPageMargin={setPageMargin}
+        textAlign={textAlign}
+        setTextAlign={setTextAlign}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+      />
+    </div>
+  </div>;
 }
 
-/* Elevate SVG marks-pane layer ABOVE the iframe so colors are visible */
-.epub-view > svg,
-.epub-viewer svg,
-svg.marks-pane {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  z-index: 15 !important;
-  pointer-events: none !important;
-  overflow: visible !important;
-  display: block !important;
-  mix-blend-mode: normal !important;
+function ReadingSettingsDrawer({
+  isOpen,
+  onClose,
+  theme,
+  setTheme,
+  fontSize,
+  setFontSize,
+  fontFamily,
+  setFontFamily,
+  lineHeight,
+  setLineHeight,
+  pageMargin,
+  setPageMargin,
+  textAlign,
+  setTextAlign,
+  viewMode,
+  onViewModeChange
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <aside className="settings-drawer">
+      <div className="settings-header">
+        <div className="settings-title">
+          <SlidersHorizontal size={17} className="settings-icon-teal" />
+          <span>Reading Settings</span>
+        </div>
+        <button className="settings-close" onClick={onClose} title="Tutup pengaturan">
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="settings-body">
+        {/* Theme Section */}
+        <section className="settings-section">
+          <div className="settings-label">
+            <span className="settings-label-title">Theme</span>
+          </div>
+          <div className="theme-grid">
+            {THEME_OPTIONS.map(opt => {
+              const Icon = opt.icon;
+              const isActive = theme === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  className={`theme-card ${opt.id} ${isActive ? 'active' : ''}`}
+                  onClick={() => setTheme(opt.id)}
+                >
+                  <Icon size={18} />
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Font Size Section */}
+        <section className="settings-section">
+          <div className="settings-label">
+            <span className="settings-label-title">Font Size</span>
+            <span className="settings-value">{fontSize}px</span>
+          </div>
+          <div className="slider-control-row">
+            <button
+              className="stepper-btn"
+              onClick={() => setFontSize(v => Math.max(12, v - 1))}
+              title="Perkecil"
+            >
+              <Minus size={14} />
+            </button>
+            <input
+              type="range"
+              className="settings-slider"
+              min={12}
+              max={36}
+              value={fontSize}
+              onChange={e => setFontSize(Number(e.target.value))}
+            />
+            <button
+              className="stepper-btn"
+              onClick={() => setFontSize(v => Math.min(36, v + 1))}
+              title="Perbesar"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        </section>
+
+        {/* Font Family Section */}
+        <section className="settings-section">
+          <div className="settings-label">
+            <span className="settings-label-title">
+              <Type size={14} /> Font Family
+            </span>
+          </div>
+          <div className="font-grid">
+            {FONT_FAMILIES.map(f => {
+              const isActive = fontFamily === f.id;
+              return (
+                <button
+                  key={f.id}
+                  className={`font-pill ${isActive ? 'active' : ''}`}
+                  style={{ fontFamily: f.family }}
+                  onClick={() => setFontFamily(f.id)}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Text Alignment Section */}
+        <section className="settings-section">
+          <div className="settings-label">
+            <span className="settings-label-title">
+              <AlignJustify size={14} /> Perataan Teks
+            </span>
+            <span className="settings-value">
+              {textAlign === 'justify' ? 'Rata Kanan-Kiri' : textAlign === 'left' ? 'Rata Kiri' : textAlign === 'center' ? 'Rata Tengah' : 'Rata Kanan'}
+            </span>
+          </div>
+          <div className="align-buttons-grid">
+            <button
+              className={`align-btn ${textAlign === 'left' ? 'active' : ''}`}
+              onClick={() => setTextAlign('left')}
+              title="Rata Kiri"
+            >
+              <AlignLeft size={16} />
+            </button>
+            <button
+              className={`align-btn ${textAlign === 'center' ? 'active' : ''}`}
+              onClick={() => setTextAlign('center')}
+              title="Rata Tengah"
+            >
+              <AlignCenter size={16} />
+            </button>
+            <button
+              className={`align-btn ${textAlign === 'right' ? 'active' : ''}`}
+              onClick={() => setTextAlign('right')}
+              title="Rata Kanan"
+            >
+              <AlignRight size={16} />
+            </button>
+            <button
+              className={`align-btn ${textAlign === 'justify' ? 'active' : ''}`}
+              onClick={() => setTextAlign('justify')}
+              title="Rata Kanan-Kiri (Justify)"
+            >
+              <AlignJustify size={16} />
+            </button>
+          </div>
+        </section>
+
+        {/* Line Height Section */}
+        <section className="settings-section">
+          <div className="settings-label">
+            <span className="settings-label-title">
+              <AlignJustify size={14} /> Line Height
+            </span>
+            <span className="settings-value">{lineHeight.toFixed(1)}</span>
+          </div>
+          <input
+            type="range"
+            className="settings-slider"
+            min={1.2}
+            max={2.6}
+            step={0.1}
+            value={lineHeight}
+            onChange={e => setLineHeight(Number(e.target.value))}
+          />
+        </section>
+
+        {/* Page Margin Section */}
+        <section className="settings-section">
+          <div className="settings-label">
+            <span className="settings-label-title">Page Margin</span>
+            <span className="settings-value">{pageMargin}px</span>
+          </div>
+          <input
+            type="range"
+            className="settings-slider"
+            min={10}
+            max={100}
+            step={5}
+            value={pageMargin}
+            onChange={e => setPageMargin(Number(e.target.value))}
+          />
+        </section>
+
+        {/* View Mode Section */}
+        <section className="settings-section">
+          <div className="settings-label">
+            <span className="settings-label-title">View Mode</span>
+          </div>
+          <div className="view-mode-stack">
+            <button
+              className={`view-mode-button ${viewMode === 'paginated' ? 'active' : ''}`}
+              onClick={() => onViewModeChange('paginated')}
+            >
+              <BookOpen size={16} />
+              <span>Paginated</span>
+            </button>
+            <button
+              className={`view-mode-button ${viewMode === 'scroll' ? 'active' : ''}`}
+              onClick={() => onViewModeChange('scroll')}
+            >
+              <Rows3 size={16} />
+              <span>Continuous Scroll</span>
+            </button>
+            <button
+              className={`view-mode-button ${viewMode === 'spread' ? 'active' : ''}`}
+              onClick={() => onViewModeChange('spread')}
+            >
+              <Columns2 size={16} />
+              <span>Two-Page Spread</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </aside>
+  );
 }
 
-.epub-view > svg g,
-.epub-viewer svg g,
-svg.marks-pane g {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  mix-blend-mode: normal !important;
+function TocItem({item, onSelect, depth=0}) {
+  return <div>
+    <button className="toc-item" style={{paddingLeft: `${14 + depth * 14}px`}} onClick={() => onSelect(item.href)}>{item.label || 'Bagian tanpa judul'}</button>
+    {item.subitems?.map((sub, i) => <TocItem key={`${sub.href}-${i}`} item={sub} onSelect={onSelect} depth={depth+1}/>)}
+  </div>;
 }
 
-.epub-view > svg rect,
-.epub-viewer svg rect,
-svg.marks-pane rect {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  shape-rendering: auto !important;
-  mix-blend-mode: normal !important;
-  stroke: none !important;
-  transition: opacity .15s ease !important;
+function AuthScreen(props) {
+  const {remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
+  const [showPassword, setShowPassword] = useState(false);
+  return <main className="auth-page">
+    <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
+    <div className="auth-card">
+      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
+      <div className="auth-illustration"><div className="auth-orbit"></div><div className="auth-book"><BookOpen size={43}/></div></div>
+      <div className="eyebrow muted">PERPUSTAKAAN DIGITAL ANDA</div>
+      <h1>{authMode === 'login' ? 'Senang melihat Anda kembali.' : authMode === 'forgot' ? 'Lupa kata sandi?' : 'Mulai bangun rak buku Anda.'}</h1>
+      <p className="auth-subtitle">{authMode === 'login' ? 'Masuk untuk melanjutkan cerita yang terakhir Anda baca.' : authMode === 'forgot' ? 'Masukkan email akun Anda. Kami akan mengirim tautan untuk mengatur ulang kata sandi.' : 'Buat akun untuk menyimpan koleksi dan progres membaca di cloud.'}</p>
+      <form onSubmit={handleAuth} className="auth-form">
+        <label>Email<input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nama@email.com" required autoComplete="email"/></label>
+        {authMode !== 'forgot' && (
+        <label>Kata sandi
+          <span className="password-field">
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
+            <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)} title={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
+              {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+          </span>
+        </label>
+        )}
+        {authMode === 'login' && (
+          <div className="auth-options">
+            <label className="remember-check">
+              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}/>
+              <span>Ingat saya</span>
+            </label>
+            <button type="button" className="auth-forgot" onClick={() => { setAuthMessage(''); setAuthMode('forgot'); }}>Lupa kata sandi?</button>
+          </div>
+        )}
+        {authMessage && <div className="auth-message"><AlertCircle size={16}/>{authMessage}</div>}
+        <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Baca' : authMode === 'forgot' ? 'Kirim tautan reset' : 'Buat akun'}</button>
+      </form>
+      {authMode === 'forgot' ? (
+        <div className="auth-switch"><button onClick={() => { setAuthMessage(''); setAuthMode('login'); }}>Kembali ke halaman masuk</button></div>
+      ) : (
+        <div className="auth-switch">{authMode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'} <button onClick={() => { setAuthMessage(''); setAuthMode(authMode === 'login' ? 'signup' : 'login'); }}>{authMode === 'login' ? 'Daftar sekarang' : 'Masuk'}</button></div>
+      )}
+      <div className="auth-privacy"><span className="privacy-dot"></span> Koleksi pribadi · Sinkronisasi cloud · Tanpa TTS</div>
+    </div>
+  </main>;
 }
 
-.epub-view svg rect:hover,
-.epub-viewer svg rect:hover,
-svg.marks-pane rect:hover {
-  fill-opacity: .8 !important;
+function ResetPasswordScreen({ theme, setTheme, onDone }) {
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const submit = async e => {
+    e.preventDefault();
+    setMsg('');
+    if (pw.length < 6) { setMsg('Kata sandi minimal 6 karakter.'); return; }
+    if (pw !== pw2) { setMsg('Konfirmasi kata sandi tidak sama.'); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setBusy(false);
+    if (error) { setMsg(error.message || 'Gagal mengubah kata sandi.'); return; }
+    onDone();
+  };
+
+  return <main className="auth-page">
+    <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
+    <div className="auth-card">
+      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang baca</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
+      <div className="eyebrow muted">ATUR ULANG KATA SANDI</div>
+      <h1>Buat kata sandi baru.</h1>
+      <p className="auth-subtitle">Masukkan kata sandi baru untuk akun Anda.</p>
+      <form onSubmit={submit} className="auth-form">
+        <label>Kata sandi baru
+          <span className="password-field">
+            <input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete="new-password" autoFocus/>
+            <button type="button" className="password-toggle" onClick={() => setShow(v => !v)} title={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
+              {show ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+          </span>
+        </label>
+        <label>Ulangi kata sandi baru
+          <span className="password-field">
+            <input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Ketik ulang kata sandi" required minLength={6} autoComplete="new-password"/>
+          </span>
+        </label>
+        {msg && <div className="auth-message"><AlertCircle size={16}/>{msg}</div>}
+        <button className="primary-button auth-submit" type="submit" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : null}{busy ? 'Menyimpan…' : 'Simpan kata sandi baru'}</button>
+      </form>
+    </div>
+  </main>;
 }
 
-/* Default highlight fill if no class is set */
-.epub-view svg rect,
-.epub-viewer svg rect,
-svg.marks-pane rect,
-.epubjs-hl rect {
-  fill: #fde047 !important;
-  fill-opacity: .55 !important;
+const bookKey = (title, author) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}`;
+const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
+const ADMIN_WHATSAPP = '6285155228041'; // nomor WhatsApp admin untuk konfirmasi pembayaran
+const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
+
+// Aturan harga: 1 ebook = Rp5.000 | Paket 3 ebook = Rp10.000 | Paket 10 ebook = Rp30.000
+const PACKAGES = [
+  { qty: 1, price: 5000, label: '1 ebook' },
+  { qty: 3, price: 10000, label: 'Paket 3 ebook' },
+  { qty: 10, price: 30000, label: 'Paket 10 ebook' }
+];
+
+// Hitung harga termurah untuk n buku dengan menggabungkan paket
+const calcOrder = n => {
+  if (!n || n <= 0) return { total: 0, parts: [], hint: '' };
+  const maxQ = Math.max(...PACKAGES.map(p => p.qty));
+  const limit = n + maxQ;
+  const cost = Array(limit + 1).fill(Infinity);
+  const pick = Array(limit + 1).fill(-1);
+  cost[0] = 0;
+  for (let j = 1; j <= limit; j++) {
+    PACKAGES.forEach((p, idx) => {
+      if (j >= p.qty && cost[j - p.qty] + p.price < cost[j]) { cost[j] = cost[j - p.qty] + p.price; pick[j] = idx; }
+    });
+  }
+  let best = n;
+  for (let j = n; j <= limit; j++) if (cost[j] < cost[best]) best = j;
+  const counts = {};
+  for (let k = best; k > 0; k -= PACKAGES[pick[k]].qty) counts[pick[k]] = (counts[pick[k]] || 0) + 1;
+  const parts = Object.entries(counts)
+    .map(([idx, count]) => ({ ...PACKAGES[idx], count }))
+    .sort((a, b) => b.qty - a.qty);
+  const total = cost[best];
+  let hint = '';
+  for (let j = n + 1; j <= limit; j++) {
+    if (cost[j] <= total) { hint = `Tambah ${j - n} buku lagi, harganya tetap ${formatRupiah(total)}`; break; }
+  }
+  return { total, parts, hint };
+};
+
+const normalizeWa = raw => {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('0')) d = `62${d.slice(1)}`;
+  return d;
+};
+
+// Perkecil sampul menjadi thumbnail JPEG kecil untuk katalog
+const makeThumb = (src, width = 200) => new Promise(resolve => {
+  if (!src) { resolve(null); return; }
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const w = Math.min(width, img.naturalWidth || width);
+      const h = Math.round(w * ((img.naturalHeight || w * 1.5) / (img.naturalWidth || w)));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    } catch { resolve(null); }
+  };
+  img.onerror = () => resolve(null);
+  img.src = src;
+});
+
+const ORDER_STATUS = { pending: 'Menunggu', approved: 'Diterima', rejected: 'Ditolak' };
+
+function OrdersSection({ orders, onApprove, onReject }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const pending = orders.filter(o => o.status === 'pending');
+  const history = orders.filter(o => o.status !== 'pending');
+  const fmt = iso => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+  const renderOrder = o => (
+    <article className="order-card" key={o.id}>
+      <div className="order-card-head">
+        <b>{o.code}</b>
+        <span className={`status-pill ${o.status}`}>{ORDER_STATUS[o.status] || o.status}</span>
+      </div>
+      <div className="order-card-meta">{o.user_email} · {fmt(o.created_at)}</div>
+      <ul className="order-books">
+        {(o.order_items || []).map((it, i) => <li key={`${it.book_id || it.title}-${i}`}>{it.title}</li>)}
+      </ul>
+      <div className="order-card-foot">
+        <span className="order-total">{formatRupiah(o.total)}</span>
+        {o.status === 'pending' && (
+          <div className="order-actions">
+            <button className="order-reject" onClick={() => onReject(o)}>Tolak</button>
+            <button className="primary-button" onClick={() => onApprove(o)}><Check size={16}/> Terima</button>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+
+  return <section className="shelf-section orders-section">
+    <div className="section-heading">
+      <div><div className="eyebrow muted">PESANAN MASUK</div><h2>Pesanan <span className="count">{pending.length}</span></h2></div>
+    </div>
+    <p className="catalog-note">Cek bukti bayar di WhatsApp, lalu klik <b>Terima</b>. Semua buku dalam pesanan otomatis masuk ke rak pembeli.</p>
+
+    {pending.length === 0 ? (
+      <div className="catalog-empty">
+        <ClipboardList size={34}/>
+        <h3>Tidak ada pesanan yang menunggu</h3>
+        <p>Pesanan baru dari pembeli akan muncul di sini.</p>
+      </div>
+    ) : (
+      <div className="order-list">{pending.map(renderOrder)}</div>
+    )}
+
+    {history.length > 0 && (
+      <>
+        <button className="order-history-toggle" onClick={() => setShowHistory(v => !v)}>
+          {showHistory ? 'Sembunyikan riwayat' : `Tampilkan riwayat (${history.length})`}
+        </button>
+        {showHistory && <div className="order-list">{history.map(renderOrder)}</div>}
+      </>
+    )}
+  </section>;
 }
 
-/* Explicit Stabilo colors for all 6 variants */
-.rb-hl-yellow rect, g.rb-hl-yellow rect, g[data-color="yellow"] rect, g[fill="#fde047"] rect {
-  fill: #fde047 !important;
-  fill-opacity: .55 !important;
+const COVER_PALETTES = [
+  { bg: '#e9e2d3', fg: '#3b372f', line: '#b9a47a' },
+  { bg: '#dde5dd', fg: '#2c463d', line: '#8fae9e' },
+  { bg: '#eadcd4', fg: '#58392f', line: '#c49a85' },
+  { bg: '#dce2ea', fg: '#31425a', line: '#8fa3bf' },
+  { bg: '#e8e4c8', fg: '#4a4a2a', line: '#b5b07a' },
+  { bg: '#e3d9e6', fg: '#4a3550', line: '#a995b0' }
+];
+const hashStr = str => { let h = 0; for (const c of String(str || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+
+function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, onToggle, isAdmin, orders = [], onCheckout, onClear }) {
+  const [q, setQ] = useState('');
+  const cmpText = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
+  const list = items
+    .filter(i => `${i.title} ${i.author || ''}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => cmpText(a.author, b.author) || cmpText(a.title, b.title));
+  const isOwned = i => ownedIds.has(i.book_id) || ownedKeys.has(bookKey(i.title, i.author));
+  const chosen = items.filter(i => selected.includes(i.id) && !isOwned(i));
+  const order = calcOrder(chosen.length);
+  const total = order.total;
+
+  return <section className={`shelf-section catalog-section${!isAdmin && chosen.length ? ' has-bar' : ''}`}>
+    <div className="section-heading">
+      <div><div className="eyebrow muted">KATALOG BUKU</div><h2>Katalog <span className="count">{items.length}</span></h2></div>
+      <div className="shelf-tools">
+        <label className="searchbox"><Search size={17}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
+      </div>
+    </div>
+
+    {!isAdmin && (
+      <div className="price-strip" aria-label="Daftar harga">
+        {PACKAGES.map(pk => (
+          <div className="price-item" key={pk.qty}><span>{pk.label}</span><b>{formatRupiah(pk.price)}</b></div>
+        ))}
+      </div>
+    )}
+
+    {!isAdmin && orders.length > 0 && (
+      <div className="my-orders">
+        <div className="my-orders-title">Pesanan saya</div>
+        {orders.slice(0, 5).map(o => (
+          <div className="my-order" key={o.id}>
+            <span className="mo-code">{o.code}</span>
+            <span className="mo-meta">{(o.order_items || []).length} buku · {formatRupiah(o.total)}</span>
+            <span className={`status-pill ${o.status}`}>{ORDER_STATUS[o.status] || o.status}</span>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {error ? (
+      <div className="info-banner">Katalog belum siap: {error}. Jalankan SQL <b>catalog_auto.sql</b> di Supabase.</div>
+    ) : loading && !items.length ? (
+      <div className="catalog-empty"><LoaderCircle size={22} className="spin"/> Memuat katalog…</div>
+    ) : list.length === 0 ? (
+      <div className="catalog-empty">
+        <ShoppingBag size={34}/>
+        <h3>{q ? 'Buku tidak ditemukan' : 'Belum ada buku di katalog'}</h3>
+        <p>{q ? 'Coba kata kunci yang berbeda.' : 'Buku yang tersedia akan muncul di sini secara otomatis.'}</p>
+      </div>
+    ) : (
+      <>
+        <p className="catalog-note">
+          {isAdmin
+            ? 'Katalog terisi otomatis dari semua buku yang diunggah siapa pun (kecuali buku contoh).'
+            : 'Centang buku yang ingin dipesan. Buku tetap terkunci sampai pembayaran dikonfirmasi admin.'}
+        </p>
+        <div className="catalog-grid">
+          {list.map(item => {
+            const owned = !isAdmin && isOwned(item);
+            const isSel = selected.includes(item.id);
+            const pal = COVER_PALETTES[hashStr(item.title) % COVER_PALETTES.length];
+            return <article key={item.id} className={`catalog-card${isSel ? ' selected' : ''}${owned ? ' owned' : ''}`}>
+              <div className="catalog-cover" onClick={() => !isAdmin && !owned && onToggle(item.id)}>
+                {item.cover_data
+                  ? <img src={item.cover_data} alt={item.title} draggable="false"/>
+                  : (
+                    <div className="cover-fallback" style={{ background: pal.bg, color: pal.fg }}>
+                      <div className="cover-frame" style={{ borderColor: pal.line }}>
+                        <span className="cover-name">{item.title}</span>
+                        <i style={{ background: pal.line }}/>
+                        <small>{item.author}</small>
+                      </div>
+                    </div>
+                  )}
+                {!isAdmin && !owned && (
+                  <button type="button" role="checkbox" aria-checked={isSel} aria-label={`Pilih ${item.title}`}
+                    className={`catalog-check${isSel ? ' on' : ''}`}
+                    onClick={e => { e.stopPropagation(); onToggle(item.id); }}>
+                    {isSel && <Check size={14}/>}
+                  </button>
+                )}
+              </div>
+              <div className="catalog-info">
+                <h3 title={item.title}>{item.title}</h3>
+                <p className="catalog-author">{item.author}</p>
+                {!isAdmin && (
+                  <p className={`catalog-state${owned ? ' open' : ''}`}>
+                    {owned ? <><Check size={12}/> Dimiliki</> : <><Lock size={12}/> Terkunci</>}
+                  </p>
+                )}
+              </div>
+            </article>;
+          })}
+        </div>
+      </>
+    )}
+
+    {!isAdmin && chosen.length > 0 && (
+      <div className="order-bar">
+        <div className="order-bar-info">
+          <strong>{chosen.length} buku dipilih</strong>
+          <span>{formatRupiah(total)}</span>
+          {order.hint && <small className="order-hint">{order.hint}</small>}
+        </div>
+        <button className="order-clear" onClick={onClear}>Batal</button>
+        <button className="primary-button" onClick={onCheckout}>Pesan &amp; Bayar</button>
+      </div>
+    )}
+  </section>;
 }
 
-.rb-hl-green rect, g.rb-hl-green rect, g[data-color="green"] rect, g[fill="#86efac"] rect {
-  fill: #86efac !important;
-  fill-opacity: .55 !important;
+function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
+  const [code] = useState(() => `RB-${Date.now().toString(36).toUpperCase()}`);
+  const [busy, setBusy] = useState(false);
+  const [qrisOk, setQrisOk] = useState(true);
+  const order = calcOrder(items.length);
+  const total = order.total;
+  const wa = normalizeWa(ADMIN_WHATSAPP);
+  const lines = items.map((it, i) => `${i + 1}. ${it.title}`).join('\n');
+  const breakdown = order.parts.map(pt => `${pt.count}x ${pt.label} = ${formatRupiah(pt.count * pt.price)}`).join('\n');
+  const text = `Halo Admin Ruang Baca, saya sudah melakukan pembayaran.\n\nKode pesanan: ${code}\nEmail akun: ${email}\n\nBuku:\n${lines}\n\nRincian:\n${breakdown}\n\nTotal: ${formatRupiah(total)}\n\nMohon dibukakan kunci bukunya. Terima kasih.`;
+  const link = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(text)}` : null;
+  const qrisSrc = `${import.meta.env.BASE_URL}qris.png`;
+
+  const confirmPayment = async () => {
+    if (!link || busy) return;
+    setBusy(true);
+    const w = window.open('about:blank', '_blank');
+    const res = await onSubmit({ code, total, ids: items.map(i => i.book_id) });
+    setBusy(false);
+    if (!res.ok) { try { w && w.close(); } catch {} return; }
+    if (w) w.location.href = link; else window.location.href = link;
+    onConfirmed();
+  };
+
+  return <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-card checkout-card" onClick={e => e.stopPropagation()}>
+      <div className="modal-header">
+        <div className="modal-title"><ShoppingBag size={18} className="modal-icon-teal"/><span>Pembayaran</span></div>
+        <button className="modal-close-btn" onClick={onClose} title="Tutup"><X size={18}/></button>
+      </div>
+
+      <div className="checkout-code">Kode pesanan <b>{code}</b></div>
+      <div className="checkout-items">
+        {items.map(it => (
+          <div className="checkout-row" key={it.id}><span title={it.title}>{it.title}</span></div>
+        ))}
+        {order.parts.map(pt => (
+          <div className="checkout-row part" key={pt.qty}><span>{pt.count}× {pt.label}</span><b>{formatRupiah(pt.count * pt.price)}</b></div>
+        ))}
+        <div className="checkout-row total"><span>Total bayar</span><b>{formatRupiah(total)}</b></div>
+      </div>
+
+      <div className="qris-box">
+        <div className="qris-name"><span>Atas nama</span><b>{QRIS_NAME}</b></div>
+        {qrisOk
+          ? <img src={qrisSrc} alt="QRIS pembayaran" onError={() => setQrisOk(false)}/>
+          : <div className="qris-missing">Gambar QRIS belum dipasang. Hubungi admin lewat WhatsApp untuk mendapatkan kode pembayaran.</div>}
+        <div className="qris-caption">Scan dengan aplikasi e-wallet atau mobile banking</div>
+      </div>
+
+      <ol className="checkout-steps">
+        <li>Scan QRIS di atas dan bayar sesuai <b>total</b>.</li>
+        <li>Setelah berhasil, tekan tombol konfirmasi WhatsApp di bawah dan kirim bukti bayar.</li>
+        <li>Admin akan memeriksa dan membuka kunci buku di akun <b>{email}</b>.</li>
+      </ol>
+
+      {link
+        ? <button className="primary-button wa-button" onClick={confirmPayment} disabled={busy}>
+            {busy ? <LoaderCircle size={18} className="spin"/> : <MessageCircle size={18}/>}
+            {busy ? 'Mencatat pesanan…' : 'Saya sudah bayar — Konfirmasi via WhatsApp'}
+          </button>
+        : <div className="info-banner">Nomor WhatsApp admin belum diatur.</div>}
+    </div>
+  </div>;
 }
 
-.rb-hl-blue rect, g.rb-hl-blue rect, g[data-color="blue"] rect, g[fill="#93c5fd"] rect {
-  fill: #93c5fd !important;
-  fill-opacity: .55 !important;
+function SetupMissing() {
+  return <main className="setup-page"><div className="setup-card"><div className="brand-mark"><BookOpen size={22}/></div><h1>Hubungkan Ruang Baca ke Supabase</h1><p>Aplikasi hampir siap. Isi URL dan key Supabase di file <code>.env</code>, lalu jalankan ulang server.</p><ol><li>Buat proyek Supabase.</li><li>Salin <code>.env.example</code> menjadi <code>.env</code>.</li><li>Isi <code>VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code>.</li><li>Jalankan kembali <code>npm run dev</code>.</li></ol></div></main>;
 }
 
-.rb-hl-pink rect, g.rb-hl-pink rect, g[data-color="pink"] rect, g[fill="#f472b6"] rect {
-  fill: #f472b6 !important;
-  fill-opacity: .55 !important;
-}
-
-.rb-hl-orange rect, g.rb-hl-orange rect, g[data-color="orange"] rect, g[fill="#fdba74"] rect {
-  fill: #fdba74 !important;
-  fill-opacity: .55 !important;
-}
-
-.rb-hl-purple rect, g.rb-hl-purple rect, g[data-color="purple"] rect, g[fill="#d8b4fe"] rect {
-  fill: #d8b4fe !important;
-  fill-opacity: .55 !important;
-}
-
-[data-reader-theme="dark"] .epub-view svg rect,
-[data-reader-theme="dark"] .epub-viewer svg rect,
-[data-reader-theme="dark"] svg.marks-pane rect {
-  fill-opacity: .65 !important;
-}
-
-
-/* Efek kertas & swipe halaman */
-.reader-paper { perspective: 1400px; }
-.epub-viewer { touch-action: pan-y; will-change: transform, opacity; }
-
-/* Tombol unduh EPUB di kartu buku */
-.download-button{border:0;background:transparent;color:var(--muted);padding:3px;opacity:.65;cursor:pointer;border-radius:6px;display:grid;place-items:center;transition:all .15s}
-.download-button:hover{opacity:1;color:#0d9488;background:var(--surface-2)}
-
-/* Tombol tema di halaman login: pojok kanan atas, tidak menimpa kartu */
-.auth-page > .auth-theme{position:fixed;top:16px;right:16px;left:auto;bottom:auto;margin:0;z-index:20;opacity:.75;transition:opacity .15s}
-.auth-page > .auth-theme:hover{opacity:1}
-
-/* Rak buku: 3 kolom saat portrait + drag & drop */
-@media (orientation: portrait) and (max-width: 900px){
-  .book-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 10px}
-  .book-title-row{flex-direction:column;align-items:flex-start;gap:2px}
-  .book-details h3{font-size:12px;line-height:1.25}
-  .book-author{font-size:10.5px}
-  .book-meta{display:none}
-  .book-card-actions{gap:0;margin-left:-3px}
-  .cover-open{display:none}
-  .book-cover .cover-topline{font-size:5px}
-  .book-cover .cover-title{font-size:12px}
-  .book-cover .cover-author{font-size:9px}
-  .book-cover .cover-bottom{font-size:6px}
-}
-.book-card{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.book-card img{-webkit-user-drag:none;user-drag:none}
-.book-card.is-drag-source{opacity:.28;transform:scale(.96);transition:opacity .15s,transform .15s}
-body.is-dragging-card{user-select:none;-webkit-user-select:none;cursor:grabbing}
-body.is-dragging-card *{cursor:grabbing !important}
-.drag-hint{margin:0 0 14px;font-size:12px;color:var(--muted)}
-
-/* Rapikan kartu: tinggi judul selalu 2 baris supaya semua kartu sejajar */
-.book-grid{align-items:start}
-.book-title-row h3{flex:1;min-width:0;min-height:calc(2 * 1.45em);word-break:break-word;overflow-wrap:anywhere}
-.book-card-actions{flex-shrink:0;margin-top:-2px}
-.book-author{margin:4px 0 10px}
-@media (orientation: portrait) and (max-width: 900px){
-  .book-title-row h3{min-height:calc(2 * 1.25em);width:100%}
-  .book-author{margin:3px 0 8px}
-}
-
-.book-meta{justify-content:flex-start}
-
-/* Admin: akses buku */
-.access-button,.shared-badge{flex-shrink:0}
-.access-button{border:0;background:transparent;color:var(--muted);padding:3px;opacity:.65;cursor:pointer;border-radius:6px;display:grid;place-items:center;transition:all .15s}
-.access-button:hover{opacity:1;color:#0d9488;background:var(--surface-2)}
-.shared-badge{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#0d9488;background:rgba(13,148,136,.12);border-radius:999px;padding:3px 8px;white-space:nowrap}
-.access-book-title{margin:-6px 0 14px;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.access-list{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
-.access-list-head{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;letter-spacing:.03em}
-.access-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:10px;background:var(--surface-2)}
-.access-row + .access-row{margin-top:6px}
-.access-row span{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.access-empty{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;padding:8px 2px}
-.access-list{max-height:240px;overflow:auto}
-
-/* Ikon mata untuk kata sandi */
-.password-field{position:relative;display:block}
-.password-field input{width:100%;padding-right:48px}
-.password-toggle{position:absolute;top:50%;right:10px;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);width:34px;height:34px;border-radius:8px;display:grid;place-items:center;cursor:pointer;transition:color .15s,background .15s}
-.password-toggle:hover{color:var(--ink);background:var(--surface-2)}
-
-.owner-tag{margin:-6px 0 8px;font-size:10.5px;color:#0d9488;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-/* Urutkan rak buku */
-.sort-select{height:43px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:0 34px 0 13px;font:inherit;font-size:14px;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
-.sort-select:focus{outline:2px solid rgba(13,148,136,.35);outline-offset:1px}
-@media(max-width:760px){.sort-select{flex:1;min-width:0;height:42px}}
-
-/* Baris pengunggah (admin): tinggi tetap supaya semua kartu sejajar */
-.owner-tag{height:16px;line-height:16px;margin:-2px 0 6px}
-.owner-tag.mine{color:var(--muted)}
-
-/* Toggle keterangan pengunggah (admin) */
-.owner-toggle{height:43px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:12px;padding:0 13px;font:inherit;font-size:14px;cursor:pointer;transition:all .15s}
-.owner-toggle.on{color:#0d9488;border-color:rgba(13,148,136,.45);background:rgba(13,148,136,.08)}
-.owner-toggle:hover{color:var(--ink)}
-@media(max-width:760px){.owner-toggle{height:42px}.owner-toggle span{display:none}}
-
-/* Buku contoh */
-.sample-button{border:0;background:transparent;color:var(--muted);padding:3px;opacity:.65;cursor:pointer;border-radius:6px;display:grid;place-items:center;transition:all .15s;flex-shrink:0}
-.sample-button:hover{opacity:1;color:#d97706;background:var(--surface-2)}
-.sample-button.on{opacity:1;color:#d97706;background:rgba(217,119,6,.14)}
-.info-banner{margin:0 0 14px;padding:10px 14px;border-radius:12px;font-size:13px;color:var(--ink);background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.3)}
-
-/* Lupa kata sandi */
-.auth-forgot{align-self:flex-end;margin:-6px 0 0;border:0;background:transparent;color:#0d9488;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:2px 0}
-.auth-forgot:hover{text-decoration:underline}
-
-/* Ingat saya */
-.auth-options{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 2px}
-.auth-options .auth-forgot{align-self:auto;margin:0}
-.auth-form .remember-check{display:inline-flex;flex-direction:row;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;user-select:none}
-.auth-form .remember-check input{width:16px;height:16px;margin:0;padding:0;accent-color:#0d9488;cursor:pointer;flex:none}
-
-/* ===== Tab & Katalog ===== */
-.tabs-bar{display:flex;gap:26px;border-bottom:1px solid var(--line);margin:0 0 30px}
-.tabs-bar button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:14.5px;font-weight:600;padding:12px 2px;margin-bottom:-1px;border-bottom:2px solid transparent;cursor:pointer;transition:color .15s,border-color .15s}
-.tabs-bar button:hover{color:var(--ink)}
-.tabs-bar button.active{color:var(--ink);border-bottom-color:var(--accent)}
-
-.price-strip{display:flex;flex-wrap:wrap;margin:2px 0 20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
-.price-item{flex:1 1 160px;display:flex;flex-direction:column;gap:3px;padding:13px 18px}
-.price-item + .price-item{border-left:1px solid var(--line)}
-.price-item span{font-size:12px;color:var(--muted);letter-spacing:.02em}
-.price-item b{font-size:17px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
-.catalog-note{margin:0 0 20px;font-size:13px;color:var(--muted)}
-
-.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:30px 22px;align-items:start}
-.catalog-card{position:relative}
-.catalog-cover{position:relative;aspect-ratio:2/3;border-radius:6px;overflow:hidden;background:var(--surface-2);box-shadow:0 1px 2px rgba(0,0,0,.12),0 8px 18px rgba(0,0,0,.10);cursor:pointer;transition:transform .18s,box-shadow .18s}
-.catalog-card:not(.owned) .catalog-cover:hover{transform:translateY(-3px);box-shadow:0 2px 4px rgba(0,0,0,.12),0 14px 26px rgba(0,0,0,.16)}
-.catalog-card.owned .catalog-cover{cursor:default}
-.catalog-card.selected .catalog-cover{box-shadow:0 0 0 2px var(--accent),0 10px 22px rgba(0,0,0,.14)}
-.catalog-cover img{width:100%;height:100%;object-fit:cover;display:block}
-.cover-fallback{height:100%;padding:10px}
-.cover-frame{height:100%;border:1px solid;border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px 12px;text-align:center}
-.cover-name{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:600;line-height:1.28;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.cover-frame i{display:block;width:28px;height:1px}
-.cover-frame small{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.catalog-check{position:absolute;top:8px;left:8px;width:24px;height:24px;border-radius:7px;border:1.5px solid rgba(255,255,255,.95);background:rgba(0,0,0,.28);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0;transition:background .15s,border-color .15s}
-.catalog-check.on{background:var(--accent);border-color:var(--accent)}
-.catalog-info{padding:11px 1px 0}
-.catalog-info h3{margin:0;font-size:13.5px;line-height:1.35;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:calc(2 * 1.35em);overflow-wrap:anywhere}
-.catalog-author{margin:3px 0 0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.catalog-state{display:inline-flex;align-items:center;gap:5px;margin:8px 0 0;font-size:11.5px;color:var(--muted)}
-.catalog-state.open{color:var(--accent)}
-.catalog-empty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:56px 20px;color:var(--muted)}
-.catalog-empty h3{margin:6px 0 0;color:var(--ink)}
-.catalog-empty p{margin:0;max-width:340px;font-size:14px}
-
-.catalog-section.has-bar{padding-bottom:96px}
-.order-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:40;width:min(640px,calc(100vw - 28px));display:flex;align-items:center;gap:12px;padding:11px 12px 11px 20px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:0 12px 36px rgba(0,0,0,.20)}
-.order-bar-info{flex:1;display:flex;flex-direction:column;min-width:0;line-height:1.3}
-.order-bar-info strong{font-size:13px;font-weight:600;color:var(--muted)}
-.order-bar-info span{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
-.order-hint{color:var(--muted);font-size:11.5px;margin-top:2px}
-.order-clear{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;padding:8px 6px}
-.order-clear:hover{color:var(--ink)}
-
-.checkout-card{width:min(100%,440px);max-height:92vh;overflow:auto}
-.checkout-code{font-size:12.5px;color:var(--muted);margin:-4px 0 12px}
-.checkout-code b{color:var(--ink);letter-spacing:.04em}
-.checkout-items{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px}
-.checkout-row{display:flex;justify-content:space-between;gap:12px;padding:9px 13px;font-size:13.5px}
-.checkout-row + .checkout-row{border-top:1px solid var(--line)}
-.checkout-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.checkout-row.part{background:var(--surface-2);font-size:13px}
-.checkout-row.part span{white-space:normal}
-.checkout-row.total{font-size:15px;font-weight:700}
-.qris-box{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border-radius:16px;background:#fff;border:1px solid var(--line);margin-bottom:14px}
-.qris-box img{width:min(100%,260px);height:auto;display:block}
-.qris-caption{font-size:11.5px;color:#666}
-.qris-missing{font-size:13px;color:#555;text-align:center;padding:18px 6px}
-.checkout-steps{margin:0 0 16px;padding-left:20px;font-size:13px;color:var(--muted);display:grid;gap:5px}
-.checkout-steps b{color:var(--ink)}
-.wa-button{width:100%;justify-content:center;background:#16a34a !important;border-color:#16a34a !important;color:#fff !important;text-decoration:none;gap:8px}
-.wa-button:hover{filter:brightness(1.08)}
-
-@media (orientation: portrait) and (max-width: 900px){
-  .tabs-bar{gap:22px;margin-bottom:22px}
-  .price-item{flex:1 1 30%;padding:10px 12px}
-  .price-item b{font-size:14px}
-  .price-item span{font-size:11px}
-  .catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 10px}
-  .catalog-info h3{font-size:12px}
-  .catalog-author{font-size:10.5px}
-  .catalog-state{font-size:10.5px;margin-top:6px}
-  .cover-frame{padding:10px 6px;gap:8px}
-  .cover-name{font-size:11.5px}
-  .cover-frame small{font-size:8.5px}
-  .cover-fallback{padding:6px}
-  .catalog-check{width:22px;height:22px;top:6px;left:6px}
-  .order-bar{bottom:10px;padding:10px 10px 10px 16px;gap:8px}
-}
-
-/* Nama penerima di atas QRIS */
-.qris-name{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:4px;text-align:center}
-.qris-name span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#777}
-.qris-name b{font-size:15px;letter-spacing:.04em;color:#1c1c1c}
-
-/* ===== Pesanan ===== */
-.tab-badge{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;margin-left:2px}
-.status-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
-.status-pill.pending{background:rgba(217,119,6,.15);color:#b45309}
-.status-pill.approved{background:rgba(22,163,74,.15);color:#15803d}
-.status-pill.rejected{background:rgba(220,38,38,.13);color:#b91c1c}
-.my-orders{margin:0 0 20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:6px 6px 8px}
-.my-orders-title{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;padding:8px 12px 4px}
-.my-order{display:flex;align-items:center;gap:12px;padding:8px 12px;font-size:13px}
-.my-order + .my-order{border-top:1px solid var(--line)}
-.mo-code{font-weight:700;letter-spacing:.03em}
-.mo-meta{flex:1;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.order-list{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin-bottom:18px}
-.order-card{border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
-.order-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.order-card-head b{letter-spacing:.04em}
-.order-card-meta{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
-.order-books{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:3px}
-.order-card-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;padding-top:12px;border-top:1px solid var(--line)}
-.order-total{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
-.order-actions{display:flex;align-items:center;gap:8px}
-.order-reject{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:9px 14px;border-radius:12px;cursor:pointer}
-.order-reject:hover{color:#b91c1c;border-color:rgba(220,38,38,.4)}
-.order-history-toggle{border:0;background:transparent;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0;margin-bottom:12px}
-@media(max-width:760px){.order-list{grid-template-columns:1fr}}
-
-/* Tab Katalog berkedip untuk pengguna baru */
-.tabs-bar button.nudge{color:var(--accent);animation:tabBlink 1.2s ease-in-out infinite}
-.tabs-bar button.nudge::after{content:'';width:7px;height:7px;border-radius:50%;background:#dc2626;margin-left:-2px;animation:tabBlink 1.2s ease-in-out infinite}
-@keyframes tabBlink{0%,100%{opacity:1}50%{opacity:.25}}
-@media (prefers-reduced-motion: reduce){.tabs-bar button.nudge,.tabs-bar button.nudge::after{animation:none}}
-
-/* Banner: ilustrasi buku memakai cover buku terlaris */
-.art-book.has-cover{background:var(--surface-2);overflow:hidden;border-left:0}
-.art-book.has-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
-
-/* Tipografi besar BEST SELLER di belakang tiga buku: satu baris, melebar ke kiri, hanya bagian bawah huruf tengah yang tertutup buku */
-.hero-art{overflow:visible}
-.art-label{position:absolute;right:-1%;top:44px;display:flex;flex-direction:row;align-items:baseline;gap:.22em;white-space:nowrap;pointer-events:none;user-select:none;font-family:'Playfair Display',serif;font-weight:700;font-size:min(7.2vw,94px);line-height:1;letter-spacing:.01em;color:#a3bfae}
-.art-label span:last-child{font-style:italic;font-weight:600;color:#7fa38d}
-@media(max-width:1000px){.art-label{display:none}}
+createRoot(document.getElementById('root')).render(<App />);
