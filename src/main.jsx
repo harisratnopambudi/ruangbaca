@@ -824,7 +824,7 @@ function App() {
   const [accessBusy, setAccessBusy] = useState(false);
   const [accessInput, setAccessInput] = useState('');
   const canUpload = isAdmin || books.some(b => b.user_id !== userId && !b.is_sample);
-  const showAppTab = isAdmin || books.some(b => !b.is_sample);
+  const showAppTab = !isAdmin && books.some(b => !b.is_sample);
 
   useEffect(() => {
     let alive = true;
