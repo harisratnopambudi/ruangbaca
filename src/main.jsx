@@ -10,7 +10,7 @@ import {
   Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, MessageCircle, Check, ClipboardList, Smartphone
 } from 'lucide-react';
 
-const APK_URL = 'https://drive.google.com/file/d/1IiiZxeLQ9gFad6LeSgNNsWgfXoXaFMMu/view?usp=sharing';
+const APK_URL = 'https://drive.google.com/file/d/1hRqyKylrdPNaErseHJrM8Ow_PEu2FKBJ/view?usp=drive_link';
 import './styles.css';
 
 const FONT_FAMILIES = [
