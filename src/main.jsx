@@ -3155,11 +3155,11 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
       </div>
     ) : (
       <>
-        <p className="catalog-note">
-          {isAdmin
-            ? 'Katalog terisi otomatis dari semua buku yang diunggah siapa pun (kecuali buku contoh).'
-            : 'Centang buku yang ingin dipesan. Buku tetap terkunci sampai pembayaran dikonfirmasi admin.'}
-        </p>
+        {!isAdmin && (
+          <p className="catalog-note">
+            Centang buku yang ingin dipesan. Buku tetap terkunci sampai pembayaran dikonfirmasi admin.
+          </p>
+        )}
         <div className="catalog-grid">
           {list.map(item => {
             const owned = !isAdmin && isOwned(item);
