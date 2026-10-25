@@ -1494,6 +1494,27 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
   const [bookTitle, setBookTitle] = useState(book.title);
 
+  // Layar tetap menyala selama membaca (Screen Wake Lock API)
+  useEffect(() => {
+    let lock = null;
+    let released = false;
+    const request = async () => {
+      try {
+        if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+        lock = await navigator.wakeLock.request('screen');
+        if (released) { lock.release().catch(() => {}); lock = null; }
+      } catch {}
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') request(); };
+    request();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      released = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      if (lock) lock.release().catch(() => {});
+    };
+  }, []);
+
   useEffect(() => {
     if (book.title) setBookTitle(book.title);
   }, [book.title]);
