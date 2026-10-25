@@ -508,13 +508,5 @@ body.is-dragging-card *{cursor:grabbing !important}
 .art-book.has-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
 
 /* Tulisan BEST SELLER di belakang tiga buku */
-.art-label{position:absolute;left:0;right:0;top:42px;display:flex;align-items:center;justify-content:center;gap:.3em;white-space:nowrap;pointer-events:none;user-select:none;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(34px,3.9vw,58px);line-height:1;letter-spacing:.05em;filter:drop-shadow(0 3px 0 rgba(201,216,195,.95)) drop-shadow(0 8px 14px rgba(38,74,56,.25))}
-.art-label span{background:linear-gradient(100deg,#233f31 0%,#233f31 38%,#7fae92 50%,#233f31 62%,#233f31 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#233f31;animation:labelShine 3.6s ease-in-out infinite}
-.art-label svg{flex:none;width:.5em;height:.5em;color:#e8a317;filter:drop-shadow(0 1px 0 rgba(120,70,0,.35));animation:starPulse 3.6s ease-in-out infinite}
-.art-label svg:last-child{animation-delay:.6s}
-@keyframes labelShine{0%,18%{background-position:130% 0}70%,100%{background-position:-30% 0}}
-@keyframes starPulse{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.18) rotate(12deg)}}
-.art-rank{position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:50%;background:#233f31;color:#fff;font:700 12px/22px 'DM Sans',sans-serif;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.35)}
-.book-two .art-rank{background:#e8a317;color:#3a2600}
-@media(max-width:760px){.art-label{font-size:30px;top:36px}}
-@media (prefers-reduced-motion: reduce){.art-label span,.art-label svg{animation:none}}
+.art-label{position:absolute;left:0;right:0;top:50px;text-align:center;white-space:nowrap;pointer-events:none;user-select:none;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,4.4vw,64px);line-height:1;letter-spacing:.05em;color:#2c4a3a}
+@media(max-width:760px){.art-label{font-size:30px;top:40px}}
