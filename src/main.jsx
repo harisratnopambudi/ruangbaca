@@ -570,28 +570,43 @@ function App() {
 
   useEffect(() => {
     if (!books.length) return;
-    books.forEach(async (book) => {
-      const cached = await getCoverFromDb(book.id);
-      if (cached) {
-        setCovers(prev => ({ ...prev, [book.id]: cached }));
-      } else if (supabase) {
-        try {
-          const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
-          if (!data || error) return;
-          const buffer = await data.arrayBuffer();
-          const bookInst = ePub(buffer);
-          await bookInst.ready;
-          const coverUrl = await extractCoverFromBook(bookInst);
-          bookInst.destroy();
-          if (coverUrl) {
-            await saveCoverToDb(book.id, coverUrl);
-            setCovers(prev => ({ ...prev, [book.id]: coverUrl }));
+    let cancelled = false;
+    (async () => {
+      // 1) Sampul tersimpan di perangkat (IndexedDB): cepat, ambil semuanya paralel
+      const missing = [];
+      await Promise.all(books.map(async (book) => {
+        const cached = await getCoverFromDb(book.id);
+        if (cached) { if (!cancelled) setCovers(prev => prev[book.id] ? prev : { ...prev, [book.id]: cached }); }
+        // Jika belum ada di perangkat tapi thumbnail sudah ada di database, thumbnail itu langsung dipakai
+        // (lihat cover={covers[id] || book.cover_thumb}), tidak perlu mengunduh EPUB sama sekali.
+        else if (!book.cover_thumb) missing.push(book);
+      }));
+      if (cancelled || !supabase || !missing.length) return;
+      // 2) Hanya buku tanpa thumbnail yang mengunduh EPUB, dibatasi 2 sekaligus agar tidak membanjiri jaringan
+      let idx = 0;
+      const worker = async () => {
+        while (!cancelled && idx < missing.length) {
+          const book = missing[idx++];
+          try {
+            const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
+            if (!data || error) continue;
+            const buffer = await data.arrayBuffer();
+            const bookInst = ePub(buffer);
+            await bookInst.ready;
+            const coverUrl = await extractCoverFromBook(bookInst);
+            bookInst.destroy();
+            if (coverUrl) {
+              await saveCoverToDb(book.id, coverUrl);
+              if (!cancelled) setCovers(prev => ({ ...prev, [book.id]: coverUrl }));
+            }
+          } catch (e) {
+            console.warn('Sampul tidak ditemukan untuk', book.title);
           }
-        } catch (e) {
-          console.warn('Sampul tidak ditemukan untuk', book.title);
         }
-      }
-    });
+      };
+      await Promise.all([worker(), worker()]);
+    })();
+    return () => { cancelled = true; };
   }, [books]);
 
   const deleteBook = async book => {
@@ -1195,7 +1210,7 @@ function App() {
                   <BookCard
                     key={book.id}
                     book={book}
-                    cover={covers[book.id]}
+                    cover={covers[book.id] || book.cover_thumb}
                     progress={progress[book.id]}
                     index={index}
                     onOpen={() => openBook(book)}
