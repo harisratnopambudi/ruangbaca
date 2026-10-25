@@ -536,3 +536,18 @@ body.is-dragging-card *{cursor:grabbing !important}
 /* Tulisan kecil "update" bergaya pangkat di ujung nama tab */
 .tab-sup{margin-left:2px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#dc2626;vertical-align:super;line-height:0;animation:tabBlink 1.2s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){.tab-sup{animation:none}}
+
+/* Unggah bukti bayar */
+.proof-box{margin:18px 0 14px}
+.proof-pick{display:flex;align-items:center;justify-content:center;gap:9px;padding:13px 16px;border:1.5px dashed rgba(66,108,91,.5);border-radius:13px;color:#426c5b;font-weight:700;font-size:14px;cursor:pointer;transition:background .15s}
+.proof-pick:hover{background:rgba(66,108,91,.07)}
+.proof-pick.has{border-style:solid;background:rgba(66,108,91,.08)}
+.proof-preview{display:block;width:100%;max-height:200px;object-fit:contain;margin-top:12px;border-radius:12px;border:1px solid rgba(66,108,91,.18);background:#fff}
+.proof-error{margin-top:10px;font-size:13px;color:#dc2626}
+.proof-note{margin-top:10px;font-size:12px;line-height:1.6;opacity:.65;text-align:center}
+.order-proof{display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border-radius:11px;border:1px solid rgba(66,108,91,.35);background:transparent;color:#426c5b;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.order-proof:hover{background:rgba(66,108,91,.08)}
+.proof-modal{max-width:520px;width:calc(100% - 32px)}
+.proof-full{display:block;width:100%;max-height:70vh;object-fit:contain;border-radius:12px;background:#f1f1ee}
+.proof-loading{display:grid;place-items:center;padding:50px 0}
+.pay-button{width:100%;justify-content:center;gap:8px}
