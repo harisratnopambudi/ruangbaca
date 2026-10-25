@@ -507,8 +507,8 @@ body.is-dragging-card *{cursor:grabbing !important}
 .art-book.has-cover{background:var(--surface-2);overflow:hidden;border-left:0}
 .art-book.has-cover img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
 
-/* Tipografi besar BEST SELLER di belakang tiga buku */
-.hero-art{container-type:inline-size}
-.art-label{position:absolute;left:0;right:0;top:18px;display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(56px,9vw,112px);font-size:21cqw;line-height:.84;letter-spacing:-.01em;color:#a9c4b2}
-.art-label span:last-child{font-style:italic;font-weight:600;color:#8fb09d;letter-spacing:0}
-@media(max-width:760px){.art-label{top:30px}}
+/* Tipografi besar BEST SELLER di belakang tiga buku: satu baris, melebar ke kiri, hanya bagian bawah huruf tengah yang tertutup buku */
+.hero-art{overflow:visible}
+.art-label{position:absolute;right:-1%;top:44px;display:flex;flex-direction:row;align-items:baseline;gap:.22em;white-space:nowrap;pointer-events:none;user-select:none;font-family:'Playfair Display',serif;font-weight:700;font-size:min(7.2vw,94px);line-height:1;letter-spacing:.01em;color:#a3bfae}
+.art-label span:last-child{font-style:italic;font-weight:600;color:#7fa38d}
+@media(max-width:1000px){.art-label{display:none}}
