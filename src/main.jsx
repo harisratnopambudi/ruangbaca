@@ -1164,7 +1164,7 @@ function App() {
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
             <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
             {showAppTab && (
-              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><Smartphone size={16}/> Aplikasi Android{!appSeen && <span className="tab-badge tab-badge-update">Update</span>}</button>
+              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><Smartphone size={16}/> <span className="tab-text">Aplikasi Android{!appSeen && <sup className="tab-sup">update</sup>}</span></button>
             )}
             {isAdmin && (
               <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
