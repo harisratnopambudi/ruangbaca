@@ -1,9 +1,9 @@
-# Ruang Baca
+# Ruang Bacaan
 
-> Ruang Baca adalah aplikasi web untuk membaca dan membeli ebook EPUB berbahasa Indonesia. Pengguna punya rak buku pribadi, progres baca tersinkron di cloud antarperangkat, serta bookmark dan stabilo. Dikelola oleh Haris DevLab.
+> Ruang Bacaan adalah aplikasi web untuk membaca dan membeli ebook EPUB berbahasa Indonesia. Pengguna punya rak buku pribadi, progres baca tersinkron di cloud antarperangkat, serta bookmark dan stabilo. Dikelola oleh Haris DevLab.
 
 ## Ringkasan
-- URL: https://harisdevlab.online/ruangbaca/
+- URL: https://ruangbacaan.my.id/
 - Bahasa: Indonesia
 - Format buku: EPUB (tanpa DRM)
 - Platform: web, berjalan di browser HP, tablet, dan komputer
