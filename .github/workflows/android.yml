@@ -1,0 +1,96 @@
+name: Build APK Android
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+
+      - name: Build web untuk aplikasi
+        run: npm run build:android
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_ADMIN_WHATSAPP: ${{ vars.VITE_ADMIN_WHATSAPP }}
+
+      - name: Siapkan proyek Android, ikon, dan nomor versi
+        run: |
+          rm -rf android
+          npx cap add android
+          npx capacitor-assets generate --android \
+            --iconBackgroundColor '#426c5b' --iconBackgroundColorDark '#426c5b' \
+            --splashBackgroundColor '#f6f5f1' --splashBackgroundColorDark '#171c19'
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+          else
+            VERSION_NAME="$(node -p "require('./package.json').version")"
+          fi
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"$VERSION_NAME\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Tanda tangani APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret KEYSTORE_BASE64 belum diisi. Lihat file RAHASIA-keystore.txt."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          "$BT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign \
+            --ks "$RUNNER_TEMP/release.jks" --ks-pass env:KEYSTORE_PASSWORD \
+            --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD \
+            --out RuangBacaan.apk "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" verify --print-certs RuangBacaan.apk
+          rm -f "$RUNNER_TEMP/release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RuangBacaan-apk
+          path: RuangBacaan.apk
+
+      - name: Terbitkan di halaman Releases (khusus tag)
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" RuangBacaan.apk \
+            --title "Ruang Bacaan $GITHUB_REF_NAME" \
+            --notes "Aplikasi Android Ruang Bacaan. Unduh RuangBacaan.apk di bawah."
