@@ -1108,15 +1108,8 @@ function App() {
     notify(next ? 'Buku dijadikan contoh untuk semua pengguna.' : 'Buku tidak lagi menjadi contoh.');
   };
 
-  // Pembeli (sudah punya buku hasil pembelian) tidak perlu lagi melihat buku contoh di raknya
-  const hasPurchased = !isAdmin && books.some(b => b.user_id !== userId && !b.is_sample);
-  const shelfBooks = useMemo(
-    () => hasPurchased ? orderedBooks.filter(b => !(b.is_sample && b.user_id !== userId)) : orderedBooks,
-    [orderedBooks, hasPurchased, userId]
-  );
-
   const filteredBooks = useMemo(() => {
-    const list = shelfBooks.filter(book =>
+    const list = orderedBooks.filter(book =>
       `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
     );
     if (sortMode === 'manual') return list;
@@ -1126,7 +1119,7 @@ function App() {
     else if (sortMode === 'title-desc') sorted.sort((a, b) => cmp(b.title, a.title));
     else if (sortMode === 'author-asc') sorted.sort((a, b) => cmp(a.author, b.author) || cmp(a.title, b.title));
     return sorted;
-  }, [shelfBooks, query, sortMode]);
+  }, [orderedBooks, query, sortMode]);
 
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Bacaan…</span></div>;
@@ -1216,7 +1209,7 @@ function App() {
           {tab === 'shelf' && (
           <section className="shelf-section">
             <div className="section-heading">
-              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{shelfBooks.length}</span></h2></div>
+              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
               <div className="shelf-tools">
                 <label className="searchbox"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
                 <select className="sort-select" value={sortMode} onChange={e => changeSort(e.target.value)} title="Urutkan buku" aria-label="Urutkan buku">
@@ -2037,7 +2030,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
         const flow = viewMode === 'scroll' ? 'scrolled-doc' : 'paginated';
         const manager = viewMode === 'scroll' ? 'continuous' : 'default';
 
-        rendition = epub.renderTo(viewerRef.current, { width: '100%', height: '100%', spread, flow, manager, allowScriptedContent: false });
+        rendition = epub.renderTo(viewerRef.current, { width: '100%', height: '100%', spread, flow, manager });
         renditionRef.current = rendition;
 
         applyReadingStyles(rendition, readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign);
@@ -2131,8 +2124,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
       height: '100%',
       spread,
       flow,
-      manager,
-      allowScriptedContent: false
+      manager
     });
     renditionRef.current = rendition;
 
@@ -2958,7 +2950,7 @@ function AuthScreen(props) {
         {authMode !== 'forgot' && (
         <label>Kata sandi
           <span className="password-field">
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={authMode === 'login' ? 'Kata sandi Anda' : 'Minimal 8 karakter'} required minLength={authMode === 'login' ? 6 : 8} maxLength={72} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
             <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)} title={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
               {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
             </button>
@@ -2997,7 +2989,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
   const submit = async e => {
     e.preventDefault();
     setMsg('');
-    if (pw.length < 8) { setMsg('Kata sandi minimal 8 karakter.'); return; }
+    if (pw.length < 6) { setMsg('Kata sandi minimal 6 karakter.'); return; }
     if (pw !== pw2) { setMsg('Konfirmasi kata sandi tidak sama.'); return; }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
@@ -3016,7 +3008,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
       <form onSubmit={submit} className="auth-form">
         <label>Kata sandi baru
           <span className="password-field">
-            <input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Minimal 8 karakter" required minLength={8} maxLength={72} autoComplete="new-password" autoFocus/>
+            <input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete="new-password" autoFocus/>
             <button type="button" className="password-toggle" onClick={() => setShow(v => !v)} title={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
               {show ? <EyeOff size={18}/> : <Eye size={18}/>}
             </button>
@@ -3024,7 +3016,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
         </label>
         <label>Ulangi kata sandi baru
           <span className="password-field">
-            <input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Ketik ulang kata sandi" required minLength={8} maxLength={72} autoComplete="new-password"/>
+            <input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Ketik ulang kata sandi" required minLength={6} autoComplete="new-password"/>
           </span>
         </label>
         {msg && <div className="auth-message"><AlertCircle size={16}/>{msg}</div>}
@@ -3294,11 +3286,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
 }
 
 function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
-  const [code] = useState(() => {
-    // Kode pesanan sulit ditebak: waktu + 6 karakter acak kriptografis
-    const rnd = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
-    return `RB-${Date.now().toString(36).toUpperCase()}-${rnd}`;
-  });
+  const [code] = useState(() => `RB-${Date.now().toString(36).toUpperCase()}`);
   const [busy, setBusy] = useState(false);
   const [qrisOk, setQrisOk] = useState(true);
   const [proof, setProof] = useState(null);       // Blob JPEG hasil kompresi
@@ -3312,7 +3300,6 @@ function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
     e.target.value = '';
     if (!f) return;
     setProofErr('');
-    if (f.size > 15 * 1024 * 1024) { setProofErr('Ukuran gambar maksimal 15 MB.'); return; }
     if (!f.type.startsWith('image/')) { setProofErr('Pilih file berupa gambar (foto atau tangkapan layar).'); return; }
     setProofBusy(true);
     try {
