@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import ePub from 'epubjs';
 import { createClient } from '@supabase/supabase-js';
 import {
   BookOpen, Plus, Search, Sun, Moon, LogOut, UploadCloud, Trash2,
@@ -12,6 +11,21 @@ import {
 
 const APK_URL = 'https://drive.google.com/file/d/1hRqyKylrdPNaErseHJrM8Ow_PEu2FKBJ/view?usp=drive_link';
 import './styles.css';
+
+// epub.js (+ jszip dll.) cukup berat, jadi dimuat terpisah hanya saat dibutuhkan
+let epubPromise = null;
+const loadEpub = () => (epubPromise ||= import('epubjs').then(m => m.default));
+
+// Font khusus pembaca dimuat saat pembaca dibuka, bukan saat halaman awal
+let readerFontsLoaded = false;
+const loadReaderFonts = () => {
+  if (readerFontsLoaded || typeof document === 'undefined') return;
+  readerFontsLoaded = true;
+  const l = document.createElement('link');
+  l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Open+Sans:ital,wght@0,400;0,600;1,400&display=swap';
+  document.head.appendChild(l);
+};
 
 const FONT_FAMILIES = [
   { id: 'Georgia', label: 'Georgia', family: 'Georgia, serif' },
@@ -323,6 +337,7 @@ const formatSize = bytes => bytes < 1024*1024 ? `${Math.max(1, Math.round(bytes/
 
 const getBookMeta = async file => {
   const buffer = await file.arrayBuffer();
+  const ePub = await loadEpub();
   const book = ePub(buffer);
   try {
     await book.ready;
@@ -431,6 +446,15 @@ function App() {
   }, [session?.user?.id]);
 
   useEffect(() => { loadBooks(); }, [loadBooks]);
+
+  // Setelah masuk, siapkan modul pembaca di waktu luang agar buka buku terasa instan
+  useEffect(() => {
+    if (!session?.user) return;
+    const idle = window.requestIdleCallback || (cb => setTimeout(cb, 1500));
+    const cancel = window.cancelIdleCallback || clearTimeout;
+    const id = idle(() => { loadEpub().catch(() => {}); });
+    return () => cancel(id);
+  }, [session?.user?.id]);
 
   const handleAuth = async e => {
     e.preventDefault();
@@ -619,6 +643,7 @@ function App() {
             const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
             if (!data || error) continue;
             const buffer = await data.arrayBuffer();
+            const ePub = await loadEpub();
             const bookInst = ePub(buffer);
             await bookInst.ready;
             const coverUrl = await extractCoverFromBook(bookInst);
@@ -1108,8 +1133,15 @@ function App() {
     notify(next ? 'Buku dijadikan contoh untuk semua pengguna.' : 'Buku tidak lagi menjadi contoh.');
   };
 
+  // Pembeli (sudah punya buku hasil pembelian) tidak perlu lagi melihat buku contoh di raknya
+  const hasPurchased = !isAdmin && books.some(b => b.user_id !== userId && !b.is_sample);
+  const shelfBooks = useMemo(
+    () => hasPurchased ? orderedBooks.filter(b => !(b.is_sample && b.user_id !== userId)) : orderedBooks,
+    [orderedBooks, hasPurchased, userId]
+  );
+
   const filteredBooks = useMemo(() => {
-    const list = orderedBooks.filter(book =>
+    const list = shelfBooks.filter(book =>
       `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
     );
     if (sortMode === 'manual') return list;
@@ -1119,7 +1151,7 @@ function App() {
     else if (sortMode === 'title-desc') sorted.sort((a, b) => cmp(b.title, a.title));
     else if (sortMode === 'author-asc') sorted.sort((a, b) => cmp(a.author, b.author) || cmp(a.title, b.title));
     return sorted;
-  }, [orderedBooks, query, sortMode]);
+  }, [shelfBooks, query, sortMode]);
 
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Bacaan…</span></div>;
@@ -1209,7 +1241,7 @@ function App() {
           {tab === 'shelf' && (
           <section className="shelf-section">
             <div className="section-heading">
-              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
+              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{shelfBooks.length}</span></h2></div>
               <div className="shelf-tools">
                 <label className="searchbox"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
                 <select className="sort-select" value={sortMode} onChange={e => changeSort(e.target.value)} title="Urutkan buku" aria-label="Urutkan buku">
@@ -1533,6 +1565,7 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
 
 function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded, notify}) {
   const viewerRef = useRef(null);
+  useEffect(() => { loadReaderFonts(); }, []);
   const renditionRef = useRef(null);
   const epubRef = useRef(null);
   const saveTimer = useRef(null);
@@ -2011,6 +2044,8 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
         if (downloadError) throw downloadError;
         if (cancelled) return;
         const buffer = await data.arrayBuffer();
+        const ePub = await loadEpub();
+        if (cancelled) return;
         epub = ePub(buffer);
         epubRef.current = epub;
         await epub.ready;
