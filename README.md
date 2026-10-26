@@ -5,18 +5,23 @@
 # Ruang Bacaan
 
 **Perpustakaan digital pribadi untuk membaca dan membeli ebook EPUB berbahasa Indonesia.**
-Rak buku di cloud, progres baca tersinkron di semua perangkat, tersedia di web dan Android.
+Rak buku di cloud, progres baca tersinkron di semua perangkat, tersedia di web dan Android,
+dengan aplikasi admin Windows untuk mengelola pesanan.
 
 [![Situs](https://img.shields.io/website?url=https%3A%2F%2Fruangbacaan.my.id&style=for-the-badge&label=ruangbacaan.my.id&up_message=online&down_message=offline&color=426c5b)](https://ruangbacaan.my.id)
 [![Android](https://img.shields.io/badge/Android-2.1.0-426c5b?style=for-the-badge&logo=android&logoColor=white)](https://ruangbacaan.my.id)
+[![Admin Windows](https://img.shields.io/badge/Admin_Windows-1.0.0-2f4a3e?style=for-the-badge&logo=windows&logoColor=white)](#aplikasi-admin-windows)
 
 [![Deploy Web](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/deploy.yml/badge.svg)](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/deploy.yml)
 [![Build APK](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/android.yml/badge.svg)](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/android.yml)
+[![Build Admin Windows](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/windows-admin.yml/badge.svg)](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/windows-admin.yml)
 
 ![React](https://img.shields.io/badge/React_18-20232A?style=flat-square&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite_6-646CFF?style=flat-square&logo=vite&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
 ![Capacitor](https://img.shields.io/badge/Capacitor_8-119EFF?style=flat-square&logo=capacitor&logoColor=white)
+![Tauri](https://img.shields.io/badge/Tauri_2-24C8D8?style=flat-square&logo=tauri&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-000000?style=flat-square&logo=rust&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-222222?style=flat-square&logo=githubpages&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
@@ -36,6 +41,7 @@ Rak buku di cloud, progres baca tersinkron di semua perangkat, tersedia di web d
 - [Menyiapkan Supabase](#menyiapkan-supabase)
 - [Deploy Situs](#deploy-situs)
 - [Aplikasi Android](#aplikasi-android)
+- [Aplikasi Admin Windows](#aplikasi-admin-windows)
 - [Keamanan](#keamanan)
 - [Rilis Versi Baru](#rilis-versi-baru)
 
@@ -69,6 +75,7 @@ Rak buku di cloud, progres baca tersinkron di semua perangkat, tersedia di web d
 | **Kelola pesanan** | Pesanan masuk secara realtime, lihat bukti bayar, terima atau tolak |
 | **Kelola akses** | Beri atau cabut akses buku per email |
 | **Buku contoh** | Tandai buku sebagai contoh gratis untuk pengguna baru |
+| **Aplikasi admin Windows** | Popup pesanan baru di pojok layar, suara notifikasi, angka di ikon tray |
 
 ---
 
@@ -80,6 +87,7 @@ Rak buku di cloud, progres baca tersinkron di semua perangkat, tersedia di web d
 | Pembaca EPUB | epub.js (dimuat terpisah saat dibutuhkan) |
 | Backend | Supabase: Auth, PostgreSQL dengan Row Level Security, Storage, Realtime |
 | Aplikasi Android | Capacitor 8 |
+| Aplikasi admin Windows | Tauri 2 (Rust + WebView2), installer NSIS |
 | Hosting & CI/CD | GitHub Pages, GitHub Actions |
 
 ---
@@ -90,7 +98,11 @@ Rak buku di cloud, progres baca tersinkron di semua perangkat, tersedia di web d
 ruangbaca/
 ├── .github/workflows/
 │   ├── deploy.yml            # Deploy situs ke GitHub Pages setiap push ke main
-│   └── android.yml           # Build APK Android yang sudah ditandatangani
+│   ├── android.yml           # Build APK Android yang sudah ditandatangani
+│   └── windows-admin.yml     # Build installer aplikasi admin Windows
+├── admin-desktop/            # Aplikasi admin Windows (Tauri), proyek terpisah
+│   ├── src/                  # Antarmuka React: pesanan, popup, suara
+│   └── src-tauri/            # Sisi Windows: tray, popup, mulai otomatis
 ├── assets/                   # Sumber ikon & splash screen aplikasi Android
 ├── public/                   # File statis: CNAME, sitemap, robots, QRIS, og-image
 ├── src/
@@ -196,6 +208,33 @@ Nomor versi aplikasi diambil dari `version` di `package.json`.
 
 ---
 
+## Aplikasi Admin Windows
+
+Aplikasi desktop khusus admin untuk menerima dan menolak pesanan, dibangun dengan Tauri dari folder `admin-desktop/`. Installer berukuran kecil dan memakai Supabase yang sama dengan situs.
+
+| Fitur | Keterangan |
+|---|---|
+| **Popup pesanan baru** | Muncul di pojok kanan bawah, selalu di atas, dan tetap tampil sampai admin menekan **Buka & proses** atau **Nanti**. Tidak merebut fokus dari aplikasi lain |
+| **Suara notifikasi** | Berbunyi setiap ada pesanan baru, bisa dimatikan dari ikon lonceng |
+| **Angka di tray & taskbar** | Jumlah pesanan menunggu tampil sebagai lencana merah |
+| **Kelola pesanan** | Ringkasan harian, lihat bukti bayar, terima atau tolak dengan konfirmasi |
+| **Berjalan di latar** | Tombol X menyembunyikan ke tray; opsi mulai otomatis saat Windows menyala |
+| **Khusus admin** | Akun non-admin otomatis ditolak; semua aksi tetap dicek di server |
+
+### Membuat installer
+
+1. Buka tab **Actions → Build Admin Windows → Run workflow**.
+2. Unduh **RuangBacaanAdmin-Windows** dari bagian **Artifacts**, lalu jalankan file `*-setup.exe`.
+
+Workflow memakai variable `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` yang sama dengan situs, jadi tidak perlu secret tambahan.
+
+> [!NOTE]
+> Installer tidak ditandatangani sertifikat berbayar, sehingga Windows menampilkan *"Windows protected your PC"* saat pertama dipasang. Klik **More info → Run anyway**.
+
+Detail pengembangan ada di [`admin-desktop/README.md`](admin-desktop/README.md).
+
+---
+
 ## Keamanan
 
 - **Row Level Security** di semua tabel: pengguna hanya bisa membaca dan mengubah datanya sendiri.
@@ -214,7 +253,9 @@ Menemukan celah keamanan? Mohon laporkan secara pribadi ke pengelola, jangan lew
 1. Naikkan `version` di `package.json`, misalnya `2.1.1`.
 2. Tambahkan entri baru di **paling atas** `CHANGELOG` di `src/main.jsx`.
 3. Naikkan `APP_VERSION` di `src/main.jsx` agar label *update* muncul lagi di tab Aplikasi Android.
-4. Push, jalankan **Build APK Android**, lalu perbarui file APK di tempat unduhan.
+4. Push, jalankan **Build APK Android**, lalu perbarui file APK di Google Drive dengan **Upload new version** agar link unduhan di situs tetap sama.
+
+Untuk aplikasi admin Windows, naikkan `version` di `admin-desktop/package.json`, `admin-desktop/src-tauri/Cargo.toml`, dan `admin-desktop/src-tauri/tauri.conf.json`, lalu jalankan **Build Admin Windows**.
 
 ---
 
