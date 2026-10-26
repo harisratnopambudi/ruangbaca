@@ -1,0 +1,53 @@
+name: Build Admin Windows
+
+# Jalankan manual dari tab Actions (tombol "Run workflow"),
+# atau otomatis setiap ada perubahan di folder admin-desktop.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'admin-desktop/**'
+      - '.github/workflows/windows-admin.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-admin
+  cancel-in-progress: true
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: admin-desktop
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin-desktop/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'admin-desktop/src-tauri -> target'
+
+      - run: npm ci
+
+      - name: Build installer Windows
+        run: npx tauri build --bundles nsis
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RuangBacaanAdmin-Windows
+          path: admin-desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
