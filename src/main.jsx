@@ -6,10 +6,79 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Smartphone, Upload
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload
 } from 'lucide-react';
 
-const APK_URL = 'https://drive.google.com/file/d/1hRqyKylrdPNaErseHJrM8Ow_PEu2FKBJ/view?usp=drive_link';
+// Ikon Android (Material Icons, Apache 2.0)
+const AndroidIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85a.637.637 0 0 0-.83.22l-1.88 3.24a11.43 11.43 0 0 0-8.94 0L5.65 5.67a.643.643 0 0 0-.87-.2c-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/>
+  </svg>
+);
+
+// Changelog aplikasi: entri terbaru di paling atas
+const CHANGELOG = [
+  {
+    version: '2.1.0',
+    date: '26 Oktober 2026',
+    shortDate: '26 Okt 2026',
+    groups: [
+      {
+        title: 'Aplikasi baru',
+        items: [
+          ['Aplikasi Android sungguhan.', 'Dibangun ulang dari nol: ukurannya sekitar 3 MB, terbuka lebih cepat, dengan ikon dan layar pembuka baru.'],
+          ['Tombol Back Android.', 'Menutup panel, stabilo, atau pengaturan dulu, lalu kembali ke rak dengan rapi.'],
+          ['Unduh EPUB lewat menu Bagikan.', 'Simpan file ke File, Google Drive, atau kirim langsung ke WhatsApp.'],
+          ['Layar tidak mati sendiri', 'selama kamu membaca.'],
+          ['Unduhan resmi.', 'APK kini diunduh langsung dari halaman rilis resmi, tanpa lewat Google Drive.']
+        ]
+      },
+      {
+        title: 'Lebih cepat',
+        items: [
+          ['Halaman awal 45% lebih ringan.', 'Bagian pembaca buku baru dimuat saat dibutuhkan, jadi aplikasi dan situs terbuka lebih cepat.'],
+          ['Layar pembuka instan', 'muncul seketika, tidak ada lagi layar putih kosong saat memuat.']
+        ]
+      },
+      {
+        title: 'Lebih aman',
+        items: [
+          ['Pembayaran lebih aman.', 'Total harga dihitung langsung oleh server dan tidak bisa diubah dari perangkat.'],
+          ['Bukti bayar terlindungi.', 'Foto bukti bayar hanya bisa dilihat admin dan dihapus otomatis setelah pesanan diproses.'],
+          ['Akun lebih aman.', 'Kata sandi akun baru minimal 8 karakter.'],
+          ['Perlindungan buku dan file', 'diperketat agar koleksimu tidak bisa diakses pihak lain.']
+        ]
+      },
+      {
+        title: 'Rak lebih rapi',
+        items: [
+          ['Buku contoh disembunyikan', 'otomatis dari rak setelah kamu membeli ebook pertamamu.']
+        ]
+      }
+    ]
+  },
+  {
+    version: '2.0',
+    date: 'Oktober 2026',
+    groups: [
+      {
+        title: 'Pembaruan',
+        items: [
+          ['Nama baru: Ruang Bacaan.', 'Ruang Baca resmi berganti nama menjadi Ruang Bacaan.'],
+          ['Alamat baru:', 'ruangbacaan.my.id.'],
+          ['Layar tidak mati sendiri', 'saat kamu sedang membaca.'],
+          ['Sampul buku tampil jauh lebih cepat', 'saat pertama kali membuka rak.'],
+          ['Katalog lebih lengkap:', 'terurut berdasarkan penulis, dan edisi berbeda dari judul yang sama kini tampil terpisah.'],
+          ['Tampilan dan performa', 'diperbarui di seluruh aplikasi.']
+        ]
+      }
+    ]
+  }
+];
+const APP_RELEASE = CHANGELOG[0];
+
+// APK di Google Drive (link unduh langsung, file harus dibagikan "Siapa saja yang memiliki link")
+const APK_URL = 'https://drive.google.com/uc?export=download&id=1_is99vclr1_Qum3ryq1EC_NfLgOqYw2T';
 import { Capacitor } from '@capacitor/core';
 import './styles.css';
 
@@ -957,7 +1026,7 @@ function App() {
   // ---------- Katalog otomatis & pemesanan ----------
   const [tab, setTab] = useState('shelf');
   // Naikkan APP_VERSION setiap ada APK baru agar label "Update" berkedip lagi untuk semua pengguna
-  const APP_VERSION = '2';
+  const APP_VERSION = '3';
   const [appSeen, setAppSeen] = useState(() => {
     try { return localStorage.getItem('rb_app_seen') === APP_VERSION; } catch { return false; }
   });
@@ -1276,7 +1345,7 @@ function App() {
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
             <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
             {showAppTab && !IS_NATIVE && (
-              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><Smartphone size={16}/> <span className="tab-text">Aplikasi Android{!appSeen && <sup className="tab-sup">update</sup>}</span></button>
+              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><AndroidIcon size={16}/> <span className="tab-text">Aplikasi Android{!appSeen && <sup className="tab-sup">update</sup>}</span></button>
             )}
             {isAdmin && (
               <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
@@ -1381,25 +1450,40 @@ function App() {
 
           {tab === 'app' && showAppTab && (
             <section className="app-dl">
-              <div className="app-dl-icon"><Smartphone size={30}/></div>
-              <span className="app-dl-badge">Pembaruan besar</span>
+              <div className="app-dl-icon"><AndroidIcon size={34}/></div>
+              <span className="app-dl-badge">Versi {APP_RELEASE.version}</span>
               <h2>Ruang Bacaan untuk Android</h2>
               <p>Baca koleksi ebook-mu langsung dari HP lewat aplikasi, tanpa membuka browser. Akun dan buku yang sudah kamu beli akan sama persis.</p>
-              <a className="app-dl-btn" href={APK_URL} target="_blank" rel="noopener noreferrer"><Download size={18}/> Unduh Aplikasi (APK)</a>
-              <div className="app-dl-log">
-                <h3>Yang baru di versi ini</h3>
-                <ul>
-                  <li><strong>Nama baru: Ruang Bacaan.</strong> Ruang Baca resmi berganti nama menjadi Ruang Bacaan.</li>
-                  <li><strong>Alamat baru:</strong> ruangbacaan.my.id. Aplikasi versi lama sebaiknya diganti dengan versi ini.</li>
-                  <li><strong>Layar tidak mati sendiri</strong> saat kamu sedang membaca.</li>
-                  <li><strong>Sampul buku tampil jauh lebih cepat</strong> saat pertama kali membuka rak.</li>
-                  <li><strong>Katalog lebih lengkap:</strong> terurut berdasarkan penulis, dan edisi berbeda dari judul yang sama kini tampil terpisah.</li>
-                  <li><strong>Tampilan dan performa</strong> diperbarui di seluruh aplikasi.</li>
-                </ul>
-                <p className="app-dl-note">Pasang versi baru di atas versi lama. Akun, buku, dan progres bacamu tetap aman.</p>
+              <a className="app-dl-btn" href={APK_URL} rel="noopener"><Download size={18}/> Unduh Aplikasi (APK)</a>
+              <div className="app-dl-meta">
+                <span><AndroidIcon size={14}/> Android 7.0+</span>
+                <span>± 3 MB</span>
+                <span>{APP_RELEASE.shortDate}</span>
               </div>
+
+              <div className="app-dl-log">
+                <h3>Changelog</h3>
+                {CHANGELOG.map((rel, i) => (
+                  <details className="changelog-entry" key={rel.version} open={i === 0}>
+                    <summary>
+                      <span className="changelog-version">Versi {rel.version}</span>
+                      <span className="changelog-date">{rel.date}</span>
+                    </summary>
+                    {rel.groups.map(g => (
+                      <div className="changelog-group" key={g.title}>
+                        <h4>{g.title}</h4>
+                        <ul>
+                          {g.items.map(([head, body]) => <li key={head}><strong>{head}</strong> {body}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </details>
+                ))}
+                <p className="app-dl-note">Jika aplikasi Ruang Bacaan versi lama (sebelum 2.1.0) masih terpasang, hapus dulu, lalu pasang versi ini. Akun, buku, dan progres bacamu tetap aman karena tersimpan di cloud. Pembaruan berikutnya cukup dipasang di atas versi ini.</p>
+              </div>
+
               <ol className="app-dl-steps">
-                <li>Ketuk tombol di atas, lalu pilih Unduh di halaman Google Drive.</li>
+                <li>Ketuk tombol <b>Unduh Aplikasi (APK)</b>. File RuangBacaan.apk akan langsung terunduh.</li>
                 <li>Buka file APK yang sudah terunduh.</li>
                 <li>Jika diminta, izinkan pemasangan dari sumber ini di pengaturan HP, lalu pasang.</li>
                 <li>Buka Ruang Bacaan dan masuk dengan akun yang sama.</li>
