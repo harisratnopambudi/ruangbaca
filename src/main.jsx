@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload, Info, Zap, ShieldCheck
 } from 'lucide-react';
 
 // Ikon Android (Material Icons, Apache 2.0)
@@ -25,6 +25,7 @@ const CHANGELOG = [
     groups: [
       {
         title: 'Aplikasi baru',
+        icon: AndroidIcon,
         items: [
           ['Aplikasi Android sungguhan.', 'Dibangun ulang dari nol: ukurannya sekitar 3 MB, terbuka lebih cepat, dengan ikon dan layar pembuka baru.'],
           ['Tombol Back Android.', 'Menutup panel, stabilo, atau pengaturan dulu, lalu kembali ke rak dengan rapi.'],
@@ -35,6 +36,7 @@ const CHANGELOG = [
       },
       {
         title: 'Lebih cepat',
+        icon: Zap,
         items: [
           ['Halaman awal 45% lebih ringan.', 'Bagian pembaca buku baru dimuat saat dibutuhkan, jadi aplikasi dan situs terbuka lebih cepat.'],
           ['Layar pembuka instan', 'muncul seketika, tidak ada lagi layar putih kosong saat memuat.']
@@ -42,6 +44,7 @@ const CHANGELOG = [
       },
       {
         title: 'Lebih aman',
+        icon: ShieldCheck,
         items: [
           ['Pembayaran lebih aman.', 'Total harga dihitung langsung oleh server dan tidak bisa diubah dari perangkat.'],
           ['Bukti bayar terlindungi.', 'Foto bukti bayar hanya bisa dilihat admin dan dihapus otomatis setelah pesanan diproses.'],
@@ -51,6 +54,7 @@ const CHANGELOG = [
       },
       {
         title: 'Rak lebih rapi',
+        icon: LibraryBig,
         items: [
           ['Buku contoh disembunyikan', 'otomatis dari rak setelah kamu membeli ebook pertamamu.']
         ]
@@ -63,6 +67,7 @@ const CHANGELOG = [
     groups: [
       {
         title: 'Pembaruan',
+        icon: RefreshCw,
         items: [
           ['Nama baru: Ruang Bacaan.', 'Ruang Baca resmi berganti nama menjadi Ruang Bacaan.'],
           ['Alamat baru:', 'ruangbacaan.my.id.'],
@@ -1450,44 +1455,61 @@ function App() {
 
           {tab === 'app' && showAppTab && (
             <section className="app-dl">
-              <div className="app-dl-icon"><AndroidIcon size={34}/></div>
-              <span className="app-dl-badge">Versi {APP_RELEASE.version}</span>
-              <h2>Ruang Bacaan untuk Android</h2>
-              <p>Baca koleksi ebook-mu langsung dari HP lewat aplikasi, tanpa membuka browser. Akun dan buku yang sudah kamu beli akan sama persis.</p>
-              <a className="app-dl-btn" href={APK_URL} rel="noopener"><Download size={18}/> Unduh Aplikasi (APK)</a>
-              <div className="app-dl-meta">
-                <span><AndroidIcon size={14}/> Android 7.0+</span>
-                <span>± 3 MB</span>
-                <span>{APP_RELEASE.shortDate}</span>
+              <div className="app-dl-card app-dl-hero">
+                <div className="app-dl-icon"><AndroidIcon size={32}/></div>
+                <span className="app-dl-badge">Versi {APP_RELEASE.version}</span>
+                <h2>Ruang Bacaan untuk Android</h2>
+                <p className="app-dl-lead">Baca koleksi ebook-mu langsung dari aplikasi, tanpa membuka browser. Akun, buku, dan progres bacamu sama persis dengan di situs.</p>
+                <div className="app-dl-actions">
+                  <a className="app-dl-btn" href={APK_URL} rel="noopener"><Download size={18}/> Unduh Aplikasi (APK)</a>
+                  <ul className="app-dl-meta">
+                    <li><AndroidIcon size={13}/> Android 7.0+</li>
+                    <li>± 3 MB</li>
+                    <li>{APP_RELEASE.shortDate}</li>
+                  </ul>
+                </div>
               </div>
 
-              <div className="app-dl-log">
-                <h3>Changelog</h3>
+              <div className="app-dl-notice">
+                <Info size={18}/>
+                <span>Masih memakai aplikasi Ruang Bacaan <b>versi lama</b> (sebelum 2.1.0)? Hapus dulu, lalu pasang versi ini. Akun dan bukumu tetap aman di cloud. Pembaruan berikutnya cukup dipasang di atasnya.</span>
+              </div>
+
+              <div className="app-dl-card">
+                <h3 className="app-dl-title">Cara memasang</h3>
+                <ol className="app-dl-steps">
+                  <li><span>Ketuk <b>Unduh Aplikasi (APK)</b>, lalu tunggu file selesai terunduh.</span></li>
+                  <li><span>Buka file <b>RuangBacaan.apk</b> dari notifikasi atau folder Download.</span></li>
+                  <li><span>Jika diminta, izinkan pemasangan dari sumber ini, lalu ketuk <b>Pasang</b>.</span></li>
+                  <li><span>Buka Ruang Bacaan dan masuk dengan akun yang sama.</span></li>
+                </ol>
+              </div>
+
+              <div className="app-dl-card">
+                <h3 className="app-dl-title">Changelog</h3>
                 {CHANGELOG.map((rel, i) => (
                   <details className="changelog-entry" key={rel.version} open={i === 0}>
                     <summary>
                       <span className="changelog-version">Versi {rel.version}</span>
+                      {i === 0 && <span className="changelog-tag">Terbaru</span>}
                       <span className="changelog-date">{rel.date}</span>
                     </summary>
-                    {rel.groups.map(g => (
-                      <div className="changelog-group" key={g.title}>
-                        <h4>{g.title}</h4>
-                        <ul>
-                          {g.items.map(([head, body]) => <li key={head}><strong>{head}</strong> {body}</li>)}
-                        </ul>
-                      </div>
-                    ))}
+                    <div className="changelog-body">
+                      {rel.groups.map(g => {
+                        const Icon = g.icon || CheckCircle2;
+                        return (
+                          <div className="changelog-group" key={g.title}>
+                            <h4><Icon size={15}/> {g.title}</h4>
+                            <ul>
+                              {g.items.map(([head, body]) => <li key={head}><strong>{head}</strong> {body}</li>)}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </details>
                 ))}
-                <p className="app-dl-note">Jika aplikasi Ruang Bacaan versi lama (sebelum 2.1.0) masih terpasang, hapus dulu, lalu pasang versi ini. Akun, buku, dan progres bacamu tetap aman karena tersimpan di cloud. Pembaruan berikutnya cukup dipasang di atas versi ini.</p>
               </div>
-
-              <ol className="app-dl-steps">
-                <li>Ketuk tombol <b>Unduh Aplikasi (APK)</b>. File RuangBacaan.apk akan langsung terunduh.</li>
-                <li>Buka file APK yang sudah terunduh.</li>
-                <li>Jika diminta, izinkan pemasangan dari sumber ini di pengaturan HP, lalu pasang.</li>
-                <li>Buka Ruang Bacaan dan masuk dengan akun yang sama.</li>
-              </ol>
             </section>
           )}
 
