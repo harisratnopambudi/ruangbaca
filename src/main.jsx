@@ -10,7 +10,21 @@ import {
 } from 'lucide-react';
 
 const APK_URL = 'https://drive.google.com/file/d/1hRqyKylrdPNaErseHJrM8Ow_PEu2FKBJ/view?usp=drive_link';
+import { Capacitor } from '@capacitor/core';
 import './styles.css';
+
+// Berjalan sebagai aplikasi Android (Capacitor) atau di browser biasa
+const IS_NATIVE = Capacitor.isNativePlatform();
+const SITE_URL = 'https://ruangbacaan.my.id/';
+// Tautan di email (konfirmasi akun, reset sandi) selalu diarahkan ke situs, bukan ke alamat internal aplikasi
+const authRedirectUrl = () => IS_NATIVE ? SITE_URL : `${window.location.origin}${window.location.pathname}`;
+
+const blobToBase64 = blob => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onloadend = () => resolve(String(r.result).split(',')[1] || '');
+  r.onerror = () => reject(new Error('Gagal membaca file.'));
+  r.readAsDataURL(blob);
+});
 
 // epub.js (+ jszip dll.) cukup berat, jadi dimuat terpisah hanya saat dibutuhkan
 let epubPromise = null;
@@ -84,6 +98,16 @@ const downloadEpub = async (book, notify) => {
     const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
     if (error) throw error;
     const blob = new Blob([data], { type: 'application/epub+zip' });
+    if (IS_NATIVE) {
+      // Di aplikasi: simpan sementara lalu buka menu Bagikan (simpan ke Files, Drive, WhatsApp, dll.)
+      const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+        import('@capacitor/filesystem'), import('@capacitor/share')
+      ]);
+      const name = `${safeFileName(book.title)}.epub`;
+      const saved = await Filesystem.writeFile({ path: name, data: await blobToBase64(blob), directory: Directory.Cache });
+      await Share.share({ title: book.title, files: [saved.uri], dialogTitle: 'Simpan atau bagikan EPUB' });
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -464,7 +488,7 @@ function App() {
     try {
       if (authMode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}${window.location.pathname}`
+          redirectTo: authRedirectUrl()
         });
         if (error) throw error;
         setAuthMessage('Jika email terdaftar, tautan untuk mengatur ulang kata sandi sudah dikirim. Periksa kotak masuk atau folder spam.');
@@ -474,7 +498,7 @@ function App() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
+          options: { emailRedirectTo: authRedirectUrl() }
         });
         if (error) throw error;
         setAuthMessage(data.session ? 'Akun berhasil dibuat. Anda sudah masuk.' : 'Akun dibuat. Periksa email untuk konfirmasi, lalu masuk.');
@@ -1153,6 +1177,29 @@ function App() {
     return sorted;
   }, [shelfBooks, query, sortMode]);
 
+  // Tombol Back Android di level aplikasi
+  const appBackRef = useRef(null);
+  appBackRef.current = () => {
+    if (activeBook) { window.dispatchEvent(new Event('rb:reader-back')); return true; }
+    if (checkoutOpen) { setCheckoutOpen(false); return true; }
+    if (editingBook) { setEditingBook(null); return true; }
+    if (accessBook) { setAccessBook(null); return true; }
+    if (tab !== 'shelf') { setTab('shelf'); return true; }
+    return false;
+  };
+  useEffect(() => {
+    if (!IS_NATIVE) return;
+    let handle = null;
+    let alive = true;
+    import('@capacitor/app').then(async ({ App: CapApp }) => {
+      const h = await CapApp.addListener('backButton', () => {
+        if (!appBackRef.current?.()) CapApp.minimizeApp();
+      });
+      if (alive) handle = h; else h.remove();
+    });
+    return () => { alive = false; handle?.remove(); };
+  }, []);
+
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Bacaan…</span></div>;
   if (recovering && session) return <ResetPasswordScreen theme={theme} setTheme={setTheme} onDone={() => {
@@ -1228,7 +1275,7 @@ function App() {
           <div className="tabs-bar" role="tablist">
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
             <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
-            {showAppTab && (
+            {showAppTab && !IS_NATIVE && (
               <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><Smartphone size={16}/> <span className="tab-text">Aplikasi Android{!appSeen && <sup className="tab-sup">update</sup>}</span></button>
             )}
             {isAdmin && (
@@ -1604,8 +1651,16 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
   const [bookTitle, setBookTitle] = useState(book.title);
 
-  // Layar tetap menyala selama membaca (Screen Wake Lock API)
+  // Layar tetap menyala selama membaca (Screen Wake Lock API, atau plugin native di aplikasi)
   useEffect(() => {
+    if (IS_NATIVE) {
+      let plugin = null;
+      import('@capacitor-community/keep-awake').then(({ KeepAwake }) => {
+        plugin = KeepAwake;
+        KeepAwake.keepAwake().catch(() => {});
+      }).catch(() => {});
+      return () => { plugin?.allowSleep().catch(() => {}); };
+    }
     let lock = null;
     let released = false;
     const request = async () => {
@@ -2225,6 +2280,20 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
   turnRef.current = turn;
   const move = direction => turn(direction);
   const goTo = href => { renditionRef.current?.display(href); };
+
+  // Tombol Back Android: tutup panel dulu, baru keluar dari pembaca
+  const backHandlerRef = useRef(null);
+  backHandlerRef.current = () => {
+    if (selectionPopover || activeHighlight) { setSelectionPopover(null); setActiveHighlight(null); return; }
+    if (settingsOpen) { setSettingsOpen(false); return; }
+    if (navPanelOpen) { setNavPanelOpen(false); return; }
+    handleClose();
+  };
+  useEffect(() => {
+    const onBack = () => backHandlerRef.current?.();
+    window.addEventListener('rb:reader-back', onBack);
+    return () => window.removeEventListener('rb:reader-back', onBack);
+  }, []);
 
   const handleClose = () => {
     clearTimeout(saveTimer.current);

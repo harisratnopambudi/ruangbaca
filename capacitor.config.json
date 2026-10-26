@@ -1,0 +1,19 @@
+{
+  "appId": "id.my.ruangbacaan",
+  "appName": "Ruang Bacaan",
+  "webDir": "dist",
+  "backgroundColor": "#f6f5f1",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}
