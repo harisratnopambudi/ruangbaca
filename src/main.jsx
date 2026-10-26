@@ -1108,8 +1108,15 @@ function App() {
     notify(next ? 'Buku dijadikan contoh untuk semua pengguna.' : 'Buku tidak lagi menjadi contoh.');
   };
 
+  // Pembeli (sudah punya buku hasil pembelian) tidak perlu lagi melihat buku contoh di raknya
+  const hasPurchased = !isAdmin && books.some(b => b.user_id !== userId && !b.is_sample);
+  const shelfBooks = useMemo(
+    () => hasPurchased ? orderedBooks.filter(b => !(b.is_sample && b.user_id !== userId)) : orderedBooks,
+    [orderedBooks, hasPurchased, userId]
+  );
+
   const filteredBooks = useMemo(() => {
-    const list = orderedBooks.filter(book =>
+    const list = shelfBooks.filter(book =>
       `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
     );
     if (sortMode === 'manual') return list;
@@ -1119,7 +1126,7 @@ function App() {
     else if (sortMode === 'title-desc') sorted.sort((a, b) => cmp(b.title, a.title));
     else if (sortMode === 'author-asc') sorted.sort((a, b) => cmp(a.author, b.author) || cmp(a.title, b.title));
     return sorted;
-  }, [orderedBooks, query, sortMode]);
+  }, [shelfBooks, query, sortMode]);
 
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Bacaan…</span></div>;
@@ -1209,7 +1216,7 @@ function App() {
           {tab === 'shelf' && (
           <section className="shelf-section">
             <div className="section-heading">
-              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
+              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{shelfBooks.length}</span></h2></div>
               <div className="shelf-tools">
                 <label className="searchbox"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
                 <select className="sort-select" value={sortMode} onChange={e => changeSort(e.target.value)} title="Urutkan buku" aria-label="Urutkan buku">
