@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { BookOpen, Moon, Sun, Eye, EyeOff, AlertCircle, LoaderCircle } from 'lucide-react';
 
 export default function AuthScreen(props) {
-  const {remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
+  const {remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme,signupOpen = true} = props;
   const [showPassword, setShowPassword] = useState(false);
   return <main className="auth-page">
     <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
@@ -40,6 +40,8 @@ export default function AuthScreen(props) {
       </form>
       {authMode === 'forgot' ? (
         <div className="auth-switch"><button onClick={() => { setAuthMessage(''); setAuthMode('login'); }}>Kembali ke halaman masuk</button></div>
+      ) : authMode === 'login' && !signupOpen ? (
+        <div className="auth-switch">Pendaftaran akun baru sedang ditutup sementara.</div>
       ) : (
         <div className="auth-switch">{authMode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'} <button onClick={() => { setAuthMessage(''); setAuthMode(authMode === 'login' ? 'signup' : 'login'); }}>{authMode === 'login' ? 'Daftar sekarang' : 'Masuk'}</button></div>
       )}

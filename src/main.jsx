@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload, Info, Zap, ShieldCheck, Clock, QrCode, Copy, ScanLine
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload, Info, Zap, ShieldCheck, Clock, QrCode, Copy, ScanLine, Settings
 } from 'lucide-react';
 
 // Ikon Android (Material Icons, Apache 2.0)
@@ -510,6 +510,8 @@ function App() {
   const [password, setPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
+  // Pendaftaran akun baru dibuka/ditutup admin (public.site_settings). Default dibuka.
+  const [signupOpen, setSignupOpen] = useState(true);
   const [books, setBooks] = useState([]);
   const [covers, setCovers] = useState({});
   const [progress, setProgress] = useState({});
@@ -609,6 +611,17 @@ function App() {
     return () => cancel(id);
   }, [session?.user?.id]);
 
+  // Status pendaftaran untuk halaman masuk (fungsi belum ada di Supabase -> anggap dibuka)
+  useEffect(() => {
+    if (!supabase || session) return;
+    let alive = true;
+    supabase.rpc('get_signup_open').then(({ data, error }) => {
+      if (alive && !error) setSignupOpen(data !== false);
+    });
+    return () => { alive = false; };
+  }, [session?.user?.id]);
+  useEffect(() => { if (!signupOpen && authMode === 'signup') setAuthMode('login'); }, [signupOpen, authMode]);
+
   const handleAuth = async e => {
     e.preventDefault();
     if (!supabase) return;
@@ -624,6 +637,7 @@ function App() {
         return;
       }
       if (authMode === 'signup') {
+        if (!signupOpen) throw new Error('Pendaftaran akun baru sedang ditutup sementara.');
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -639,6 +653,11 @@ function App() {
       }
     } catch (e) {
       const m = String(e?.message || '');
+      if (authMode === 'signup' && /Database error saving new user|Pendaftaran akun baru sedang ditutup/i.test(m)) {
+        setSignupOpen(false);
+        setAuthMessage('Pendaftaran akun baru sedang ditutup sementara.');
+        return;
+      }
       setAuthMessage(/rate limit|too many/i.test(m) ? 'Terlalu banyak permintaan. Coba lagi beberapa menit lagi.' : (m || 'Autentikasi gagal.'));
     }
     finally { setAuthBusy(false); }
@@ -1373,7 +1392,7 @@ function App() {
     try { window.history.replaceState(null, '', window.location.pathname); } catch {}
     notify('Kata sandi berhasil diubah.');
   }} />;
-  if (!session) return <AuthScreen {...{remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme}} />;
+  if (!session) return <AuthScreen {...{remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme,signupOpen}} />;
 
   return (
     <div className="app-shell">
@@ -1449,6 +1468,11 @@ function App() {
             {isAdmin && (
               <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
                 <ClipboardList size={16}/> Pesanan{pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
+              </button>
+            )}
+            {isAdmin && (
+              <button role="tab" aria-selected={tab === 'settings'} className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
+                <Settings size={16}/> Pengaturan
               </button>
             )}
           </div>
@@ -1607,6 +1631,8 @@ function App() {
               </div>
             </section>
           )}
+
+          {tab === 'settings' && isAdmin && <AdminSettings notify={notify} />}
 
           {tab === 'orders' && isAdmin && (
             <OrdersSection orders={orders} onApprove={approveOrder} onReject={rejectOrder} />
@@ -3377,6 +3403,53 @@ const makeThumb = (src, width = 200) => new Promise(resolve => {
 });
 
 const ORDER_STATUS = { pending: 'Menunggu', approved: 'Diterima', rejected: 'Ditolak', awaiting_payment: 'Belum dibayar', expired: 'Kedaluwarsa' };
+
+function AdminSettings({ notify }) {
+  const [signupOpen, setSignupOpen] = useState(null); // null = memuat
+  const [busy, setBusy] = useState(false);
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    supabase.rpc('get_signup_open').then(({ data, error }) => {
+      if (!alive) return;
+      if (error) { setMissing(true); return; }
+      setSignupOpen(data !== false);
+    });
+    return () => { alive = false; };
+  }, []);
+  const toggle = async () => {
+    if (busy || signupOpen === null) return;
+    const next = !signupOpen;
+    if (!next && !window.confirm('Tutup pendaftaran akun baru? Pengguna lama tetap bisa masuk seperti biasa.')) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc('set_signup_open', { p_open: next });
+    setBusy(false);
+    if (error) { notify(error.message || 'Gagal menyimpan pengaturan.', 'error'); return; }
+    setSignupOpen(data !== false);
+    notify(data !== false ? 'Pendaftaran akun baru dibuka.' : 'Pendaftaran akun baru ditutup.');
+  };
+  return <section className="shelf-section settings-section">
+    <div className="section-heading">
+      <div><div className="eyebrow muted">KHUSUS ADMIN</div><h2>Pengaturan</h2></div>
+    </div>
+    {missing ? (
+      <div className="info-banner">Pengaturan belum siap. Jalankan SQL <b>supabase/signup_toggle.sql</b> di Supabase.</div>
+    ) : (
+      <div className="setting-card">
+        <div className="setting-text">
+          <b>Pendaftaran akun baru</b>
+          <span>{signupOpen === null ? 'Memuat…' : signupOpen
+            ? 'Dibuka. Pengunjung bisa membuat akun baru dari halaman masuk.'
+            : 'Ditutup. Tombol "Daftar" disembunyikan dan server menolak akun baru. Pengguna lama tetap bisa masuk.'}</span>
+        </div>
+        <button type="button" role="switch" aria-checked={!!signupOpen} aria-label="Pendaftaran akun baru"
+          className={`setting-switch${signupOpen ? ' on' : ''}`} onClick={toggle} disabled={busy || signupOpen === null}>
+          <span/>
+        </button>
+      </div>
+    )}
+  </section>;
+}
 
 function OrdersSection({ orders, onApprove, onReject }) {
   const [showHistory, setShowHistory] = useState(false);
