@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload, Info, Zap, ShieldCheck, Clock, QrCode, Copy, ScanLine, Settings
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload, Info, Zap, ShieldCheck, Clock, QrCode, Copy, ScanLine, Settings, Wrench
 } from 'lucide-react';
 
 // Ikon Android (Material Icons, Apache 2.0)
@@ -3583,7 +3583,19 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
   const order = calcOrder(chosen.length);
   const total = order.total;
 
-  return <section className={`shelf-section catalog-section${canBuy && chosen.length ? ' has-bar' : ''}`}>
+  const maintenance = !isAdmin && !purchaseOpen;
+
+  return <section className={`shelf-section catalog-section${canBuy && chosen.length ? ' has-bar' : ''}${maintenance ? ' maintenance' : ''}`}>
+    {maintenance && (
+      <div className="maintenance-overlay" role="status">
+        <div className="maintenance-card">
+          <span className="maintenance-icon"><Wrench size={26}/></span>
+          <b>Maintenance</b>
+          <p>Sedang perbaikan sistem. Katalog akan kembali dibuka secepatnya.</p>
+        </div>
+      </div>
+    )}
+    <div className="maintenance-body" aria-hidden={maintenance || undefined} inert={maintenance ? '' : undefined}>
     <div className="section-heading">
       <div><div className="eyebrow muted">KATALOG BUKU</div><h2>Katalog <span className="count">{items.length}</span></h2></div>
       <div className="shelf-tools">
@@ -3683,6 +3695,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
         <button className="primary-button" onClick={onCheckout}>Pesan &amp; Bayar</button>
       </div>
     )}
+    </div>
   </section>;
 }
 
