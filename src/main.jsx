@@ -627,7 +627,8 @@ function App() {
   };
 
   const handleLogout = async () => {
-    await supabase?.auth.signOut();
+    // Keluar hanya di perangkat ini; sesi di HP/aplikasi lain tetap aktif
+    await supabase?.auth.signOut({ scope: 'local' });
     setSession(null); setBooks([]); setProgress({}); setActiveBook(null);
   };
 

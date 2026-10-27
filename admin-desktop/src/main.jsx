@@ -177,15 +177,19 @@ function App() {
 
   useEffect(() => {
     if (!session) { setIsAdmin(null); return; }
-    let alive = true;
-    supabase.rpc('is_admin').then(({ data, error }) => {
+    let alive = true, timer = null;
+    // Gagal jaringan (mis. saat Windows baru menyala dan internet belum siap) bukan berarti bukan admin:
+    // coba lagi. Keluar hanya jika server benar-benar menjawab "bukan admin", dan hanya di aplikasi ini
+    // (scope 'local'), agar sesi di website, HP, dan aplikasi Android tidak ikut tercabut.
+    const check = () => supabase.rpc('is_admin').then(({ data, error }) => {
       if (!alive) return;
-      if (error || data !== true) {
-        setIsAdmin(false);
-        supabase.auth.signOut();
-      } else setIsAdmin(true);
-    });
-    return () => { alive = false; };
+      if (error) { timer = setTimeout(check, 5000); return; }
+      if (data === true) { setIsAdmin(true); return; }
+      setIsAdmin(false);
+      supabase.auth.signOut({ scope: 'local' });
+    }, () => { if (alive) timer = setTimeout(check, 5000); });
+    check();
+    return () => { alive = false; clearTimeout(timer); };
   }, [session?.user?.id]);
 
   if (!supabase) return <Centered><AlertCircle size={22}/> Konfigurasi Supabase belum diisi saat build.</Centered>;
@@ -427,7 +431,7 @@ function Dashboard({ session }) {
           )}
           <div className="divider"/>
           <span className="who" title={session.user.email}>{session.user.email}</span>
-          <button className="icon-btn" onClick={() => supabase.auth.signOut()} title="Keluar"><LogOut size={17}/></button>
+          <button className="icon-btn" onClick={() => supabase.auth.signOut({ scope: 'local' })} title="Keluar"><LogOut size={17}/></button>
         </div>
       </header>
 
