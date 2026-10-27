@@ -1120,6 +1120,15 @@ function App() {
   const [catalogError, setCatalogError] = useState('');
   const [catalogSelected, setCatalogSelected] = useState([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  // Pembelian katalog dibuka/ditutup admin (public.site_settings). Default dibuka.
+  const [purchaseOpen, setPurchaseOpen] = useState(true);
+  const loadPurchaseOpen = () => {
+    if (!supabase) return;
+    supabase.rpc('get_purchase_open').then(({ data, error }) => { if (!error) setPurchaseOpen(data !== false); });
+  };
+  useEffect(() => { if (session && tab === 'catalog') loadPurchaseOpen(); }, [session?.user?.id, tab]);
+  useEffect(() => { if (!purchaseOpen) setCatalogSelected([]); }, [purchaseOpen]);
+  const purchaseClosedError = m => /Pembelian ebook sedang ditutup/i.test(m || '') && (setPurchaseOpen(false), setCatalogSelected([]), true);
   const [checkoutResume, setCheckoutResume] = useState(null); // pesanan 'Belum dibayar' yang dilanjutkan
 
   // Katalog = semua buku milik admin (kecuali buku contoh), diambil lewat fungsi server get_catalog()
@@ -1234,7 +1243,7 @@ function App() {
       if (upError) { notify(`Gagal mengunggah bukti bayar: ${upError.message}`, 'error'); return { ok: false }; }
     }
     const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
-    if (error) { notify(error.message || 'Gagal membuat pesanan.', 'error'); return { ok: false }; }
+    if (error) { purchaseClosedError(error.message); notify(error.message || 'Gagal membuat pesanan.', 'error'); return { ok: false }; }
     setCatalogSelected([]);
     loadOrders();
     return { ok: true };
@@ -1252,10 +1261,11 @@ function App() {
     if (rErr) {
       // Fungsi belum dipasang di Supabase -> pakai alur lama (unggah bukti bayar)
       if (rErr.code === 'PGRST202' || /qris_reserve/i.test(rErr.message || '')) return { legacy: true };
+      purchaseClosedError(rErr.message);
       return { ok: false, error: rErr.message || 'Gagal menyiapkan pembayaran.' };
     }
     const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
-    if (error) return { ok: false, error: error.message || 'Gagal membuat pesanan.' };
+    if (error) { purchaseClosedError(error.message); return { ok: false, error: error.message || 'Gagal membuat pesanan.' }; }
     // create_order bisa menimpa status menjadi 'pending'; kembalikan ke 'menunggu pembayaran'
     await supabase.rpc('qris_attach', { p_code: code });
     const order = await fetchOrderByCode(code);
@@ -1557,6 +1567,7 @@ function App() {
 
           {tab === 'catalog' && (
             <CatalogSection
+              purchaseOpen={purchaseOpen}
               items={catalogItems}
               loading={catalogLoading}
               error={catalogError}
@@ -1632,7 +1643,7 @@ function App() {
             </section>
           )}
 
-          {tab === 'settings' && isAdmin && <AdminSettings notify={notify} />}
+          {tab === 'settings' && isAdmin && <AdminSettings notify={notify} onPurchaseChange={loadPurchaseOpen} />}
 
           {tab === 'orders' && isAdmin && (
             <OrdersSection orders={orders} onApprove={approveOrder} onReject={rejectOrder} />
@@ -3404,50 +3415,62 @@ const makeThumb = (src, width = 200) => new Promise(resolve => {
 
 const ORDER_STATUS = { pending: 'Menunggu', approved: 'Diterima', rejected: 'Ditolak', awaiting_payment: 'Belum dibayar', expired: 'Kedaluwarsa' };
 
-function AdminSettings({ notify }) {
-  const [signupOpen, setSignupOpen] = useState(null); // null = memuat
+// Satu baris sakelar pengaturan (dibaca/diubah lewat RPC Supabase)
+function SettingToggle({ notify, label, getFn, setFn, sqlFile, onText, offText, confirmOff, doneOn, doneOff }) {
+  const [value, setValue] = useState(null); // null = memuat
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
   useEffect(() => {
     let alive = true;
-    supabase.rpc('get_signup_open').then(({ data, error }) => {
+    supabase.rpc(getFn).then(({ data, error }) => {
       if (!alive) return;
       if (error) { setMissing(true); return; }
-      setSignupOpen(data !== false);
+      setValue(data !== false);
     });
     return () => { alive = false; };
-  }, []);
+  }, [getFn]);
   const toggle = async () => {
-    if (busy || signupOpen === null) return;
-    const next = !signupOpen;
-    if (!next && !window.confirm('Tutup pendaftaran akun baru? Pengguna lama tetap bisa masuk seperti biasa.')) return;
+    if (busy || value === null) return;
+    const next = !value;
+    if (!next && confirmOff && !window.confirm(confirmOff)) return;
     setBusy(true);
-    const { data, error } = await supabase.rpc('set_signup_open', { p_open: next });
+    const { data, error } = await supabase.rpc(setFn, { p_open: next });
     setBusy(false);
     if (error) { notify(error.message || 'Gagal menyimpan pengaturan.', 'error'); return; }
-    setSignupOpen(data !== false);
-    notify(data !== false ? 'Pendaftaran akun baru dibuka.' : 'Pendaftaran akun baru ditutup.');
+    setValue(data !== false);
+    notify(data !== false ? doneOn : doneOff);
   };
+  return <div className="setting-card">
+    <div className="setting-text">
+      <b>{label}</b>
+      <span>{missing ? <>Belum siap. Jalankan SQL <b>supabase/{sqlFile}</b> di Supabase.</> : value === null ? 'Memuat…' : value ? onText : offText}</span>
+    </div>
+    <button type="button" role="switch" aria-checked={!!value} aria-label={label}
+      className={`setting-switch${value ? ' on' : ''}`} onClick={toggle} disabled={busy || value === null}>
+      <span/>
+    </button>
+  </div>;
+}
+
+function AdminSettings({ notify, onPurchaseChange }) {
   return <section className="shelf-section settings-section">
     <div className="section-heading">
       <div><div className="eyebrow muted">KHUSUS ADMIN</div><h2>Pengaturan</h2></div>
     </div>
-    {missing ? (
-      <div className="info-banner">Pengaturan belum siap. Jalankan SQL <b>supabase/signup_toggle.sql</b> di Supabase.</div>
-    ) : (
-      <div className="setting-card">
-        <div className="setting-text">
-          <b>Pendaftaran akun baru</b>
-          <span>{signupOpen === null ? 'Memuat…' : signupOpen
-            ? 'Dibuka. Pengunjung bisa membuat akun baru dari halaman masuk.'
-            : 'Ditutup. Tombol "Daftar" disembunyikan dan server menolak akun baru. Pengguna lama tetap bisa masuk.'}</span>
-        </div>
-        <button type="button" role="switch" aria-checked={!!signupOpen} aria-label="Pendaftaran akun baru"
-          className={`setting-switch${signupOpen ? ' on' : ''}`} onClick={toggle} disabled={busy || signupOpen === null}>
-          <span/>
-        </button>
-      </div>
-    )}
+    <div className="setting-list">
+      <SettingToggle notify={notify} label="Pendaftaran akun baru"
+        getFn="get_signup_open" setFn="set_signup_open" sqlFile="signup_toggle.sql"
+        onText="Dibuka. Pengunjung bisa membuat akun baru dari halaman masuk."
+        offText={'Ditutup. Tombol "Daftar" disembunyikan dan server menolak akun baru. Pengguna lama tetap bisa masuk.'}
+        confirmOff="Tutup pendaftaran akun baru? Pengguna lama tetap bisa masuk seperti biasa."
+        doneOn="Pendaftaran akun baru dibuka." doneOff="Pendaftaran akun baru ditutup."/>
+      <SettingToggle notify={n => { notify(n); onPurchaseChange?.(); }} label="Pembelian ebook di katalog"
+        getFn="get_purchase_open" setFn="set_purchase_open" sqlFile="purchase_toggle.sql"
+        onText="Dibuka. Pembeli bisa memilih buku dan membayar lewat QRIS."
+        offText="Ditutup. Pilihan buku dan tombol pesan disembunyikan, server menolak pesanan baru. Pesanan yang sudah dibuat tetap bisa dibayar."
+        confirmOff="Tutup pembelian ebook di katalog? Pesanan yang sudah dibuat tetap bisa dibayar."
+        doneOn="Pembelian ebook dibuka." doneOff="Pembelian ebook ditutup."/>
+    </div>
   </section>;
 }
 
@@ -3548,7 +3571,8 @@ const COVER_PALETTES = [
 ];
 const hashStr = str => { let h = 0; for (const c of String(str || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, onToggle, isAdmin, orders = [], onCheckout, onResumePay, onClear }) {
+function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, onToggle, isAdmin, orders = [], onCheckout, onResumePay, onClear, purchaseOpen = true }) {
+  const canBuy = !isAdmin && purchaseOpen;
   const [q, setQ] = useState('');
   const cmpText = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
   const list = items
@@ -3559,7 +3583,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
   const order = calcOrder(chosen.length);
   const total = order.total;
 
-  return <section className={`shelf-section catalog-section${!isAdmin && chosen.length ? ' has-bar' : ''}`}>
+  return <section className={`shelf-section catalog-section${canBuy && chosen.length ? ' has-bar' : ''}`}>
     <div className="section-heading">
       <div><div className="eyebrow muted">KATALOG BUKU</div><h2>Katalog <span className="count">{items.length}</span></h2></div>
       <div className="shelf-tools">
@@ -3567,7 +3591,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
       </div>
     </div>
 
-    {!isAdmin && (
+    {canBuy && (
       <div className="price-strip" aria-label="Daftar harga">
         {PACKAGES.map(pk => (
           <div className="price-item" key={pk.qty}><span>{pk.label}</span><b>{formatRupiah(pk.price)}</b></div>
@@ -3602,7 +3626,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
       </div>
     ) : (
       <>
-        {!isAdmin && (
+        {canBuy && (
           <p className="catalog-note">
             Centang buku yang ingin dipesan. Buku tetap terkunci sampai pembayaran dikonfirmasi admin.
           </p>
@@ -3613,7 +3637,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
             const isSel = selected.includes(item.id);
             const pal = COVER_PALETTES[hashStr(item.title) % COVER_PALETTES.length];
             return <article key={item.id} className={`catalog-card${isSel ? ' selected' : ''}${owned ? ' owned' : ''}`}>
-              <div className="catalog-cover" onClick={() => !isAdmin && !owned && onToggle(item.id)}>
+              <div className="catalog-cover" onClick={() => canBuy && !owned && onToggle(item.id)}>
                 {item.cover_data
                   ? <img src={item.cover_data} alt={item.title} draggable="false"/>
                   : (
@@ -3625,7 +3649,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
                       </div>
                     </div>
                   )}
-                {!isAdmin && !owned && (
+                {canBuy && !owned && (
                   <button type="button" role="checkbox" aria-checked={isSel} aria-label={`Pilih ${item.title}`}
                     className={`catalog-check${isSel ? ' on' : ''}`}
                     onClick={e => { e.stopPropagation(); onToggle(item.id); }}>
@@ -3648,7 +3672,7 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
       </>
     )}
 
-    {!isAdmin && chosen.length > 0 && (
+    {canBuy && chosen.length > 0 && (
       <div className="order-bar">
         <div className="order-bar-info">
           <strong>{chosen.length} buku dipilih</strong>
