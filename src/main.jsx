@@ -21,7 +21,7 @@ const AndroidIcon = ({ size = 24 }) => (
 // Changelog aplikasi: entri terbaru di paling atas
 const CHANGELOG = [
   {
-    version: '2.2.0',
+    version: '2.1.1',
     date: '27 Oktober 2026',
     shortDate: '27 Okt 2026',
     groups: [
@@ -34,6 +34,24 @@ const CHANGELOG = [
           ['Halaman pembayaran berubah sendiri', 'menjadi "Terima kasih!" begitu pembayaran diterima.'],
           ['Simpan atau bagikan gambar QRIS', 'untuk dibayar lewat fitur scan dari galeri di e-wallet atau m-banking.'],
           ['Lanjutkan pembayaran nanti.', 'Pesanan yang belum dibayar punya tombol Bayar di bagian Pesanan saya.']
+        ]
+      },
+      {
+        title: 'Lebih cepat',
+        icon: Zap,
+        items: [
+          ['Halaman masuk tampil instan', 'tanpa menunggu aplikasi selesai dimuat.'],
+          ['Huruf dimuat dari server sendiri,', 'lebih ringan dan tidak bergantung pada layanan luar.'],
+          ['Info terbaru di bawah banner', 'dalam bentuk teks berjalan.']
+        ]
+      },
+      {
+        title: 'Lebih andal',
+        icon: ShieldCheck,
+        items: [
+          ['Tetap masuk dengan "Ingat saya".', 'Keluar di satu perangkat tidak lagi membuatmu keluar di perangkat lain.'],
+          ['Pulih otomatis', 'jika aplikasi gagal dimuat karena koneksi, dengan tombol Muat ulang sebagai cadangan.'],
+          ['Teks lebih mudah dibaca', 'berkat kontras warna yang ditingkatkan.']
         ]
       }
     ]
