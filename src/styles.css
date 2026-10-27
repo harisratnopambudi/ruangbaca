@@ -597,3 +597,20 @@ body.is-dragging-card *{cursor:grabbing !important}
 .order-auto-note.ok{background:rgba(22,163,74,.12);color:#15803d}
 .order-total-base{font-size:11.5px;font-weight:500;color:var(--muted)}
 .order-awaiting-note{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);margin:-6px 0 16px}
+
+/* ===== Teks berjalan di bawah banner ===== */
+.news-ticker{display:flex;align-items:center;height:46px;margin-top:14px;border:1px solid var(--line);background:var(--surface);border-radius:14px;overflow:hidden}
+.ticker-badge{flex-shrink:0;align-self:stretch;display:flex;align-items:center;gap:6px;padding:0 14px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em}
+:root[data-theme="dark"] .ticker-badge{color:#14201a}
+.ticker-track{flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
+.ticker-move{display:flex;width:max-content;animation:tickerScroll 38s linear infinite}
+.news-ticker:hover .ticker-move{animation-play-state:paused}
+.ticker-list{display:flex;margin:0;padding:0;list-style:none}
+.ticker-list li{display:flex;align-items:center;gap:8px;padding:0 26px;font-size:13px;color:var(--ink);white-space:nowrap;position:relative}
+.ticker-list li svg{color:var(--accent);flex-shrink:0}
+.ticker-list li::after{content:'';position:absolute;right:-2px;width:4px;height:4px;border-radius:50%;background:var(--line)}
+.ticker-cta{flex-shrink:0;align-self:stretch;display:flex;align-items:center;gap:4px;padding:0 14px;border:0;border-left:1px solid var(--line);background:var(--surface-2);color:var(--accent);font-size:12px;font-weight:700}
+.ticker-cta:hover{background:var(--accent-soft)}
+@keyframes tickerScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker-move{animation:none}.ticker-track{overflow-x:auto}}
+@media (max-width:640px){.news-ticker{height:42px;margin-top:12px;border-radius:12px}.ticker-badge{padding:0 10px;font-size:10px}.ticker-list li{font-size:12px;padding:0 20px}.ticker-cta{display:none}}

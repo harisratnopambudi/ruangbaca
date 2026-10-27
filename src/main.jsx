@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Smartphone, Upload, Clock, QrCode, Copy, ScanLine
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Smartphone, Upload, Clock, QrCode, Copy, ScanLine, Zap
 } from 'lucide-react';
 
 const APK_URL = 'https://drive.google.com/file/d/1hRqyKylrdPNaErseHJrM8Ow_PEu2FKBJ/view?usp=drive_link';
@@ -1229,6 +1229,8 @@ function App() {
               <div className="art-line"></div>
             </div>
           </section>
+
+          <NewsTicker onOpenCatalog={isAdmin ? null : () => setTab('catalog')}/>
 
           <div className="tabs-bar" role="tablist">
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
@@ -3370,6 +3372,31 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
 function UniqueAmount({ amount }) {
   const str = Number(amount || 0).toLocaleString('id-ID');
   return <span className="qr-amount-value">Rp{str.slice(0, -3)}<mark>{str.slice(-3)}</mark></span>;
+}
+
+// Teks berjalan di bawah banner: info pembaruan untuk pembeli
+const TICKER_ITEMS = [
+  [Zap, 'Pembayaran QRIS kini otomatis'],
+  [Clock, 'Buku langsung masuk rak dalam hitungan detik setelah bayar'],
+  [CheckCircle2, 'Tidak perlu unggah bukti bayar dan menunggu admin'],
+  [QrCode, 'Scan pakai e-wallet atau m-banking apa saja'],
+  [BookMarked, 'Mulai Rp5.000 per ebook, paket 3 ebook Rp10.000']
+];
+function NewsTicker({ onOpenCatalog }) {
+  const list = (hidden) => (
+    <ul className="ticker-list" aria-hidden={hidden || undefined}>
+      {TICKER_ITEMS.map(([Icon, text]) => (
+        <li key={text}><Icon size={15}/>{text}</li>
+      ))}
+    </ul>
+  );
+  return <div className="news-ticker" role="region" aria-label="Info pembaruan">
+    <span className="ticker-badge"><Zap size={14}/> BARU</span>
+    <div className="ticker-track">
+      <div className="ticker-move">{list(false)}{list(true)}</div>
+    </div>
+    {onOpenCatalog && <button className="ticker-cta" onClick={onOpenCatalog}>Lihat katalog <ChevronRight size={15}/></button>}
+  </div>;
 }
 
 function CheckoutModal({ items, resumeOrder, email, onClose, onStart, onFetch, onClaim, onPaid, onSubmit, onConfirmed }) {
