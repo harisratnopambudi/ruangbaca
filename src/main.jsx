@@ -1,119 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import ePub from 'epubjs';
 import { createClient } from '@supabase/supabase-js';
+import QRCode from 'qrcode';
 import {
   BookOpen, Plus, Search, Sun, Moon, LogOut, UploadCloud, Trash2,
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
   BookMarked, CheckCircle2, AlertCircle, ArrowLeft, Type, RefreshCw,
   SlidersHorizontal, Minus, AlignJustify, AlignLeft, AlignCenter, AlignRight, Columns2, Rows3,
-  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Upload, Info, Zap, ShieldCheck
+  Pencil, Bookmark, Highlighter, Download, Users, Eye, EyeOff, Gift, ShoppingBag, Lock, Check, ClipboardList, Smartphone, Upload, Clock, QrCode, Copy, ScanLine
 } from 'lucide-react';
 
-// Ikon Android (Material Icons, Apache 2.0)
-const AndroidIcon = ({ size = 24 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85a.637.637 0 0 0-.83.22l-1.88 3.24a11.43 11.43 0 0 0-8.94 0L5.65 5.67a.643.643 0 0 0-.87-.2c-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/>
-  </svg>
-);
-
-// Changelog aplikasi: entri terbaru di paling atas
-const CHANGELOG = [
-  {
-    version: '2.1.0',
-    date: '26 Oktober 2026',
-    shortDate: '26 Okt 2026',
-    groups: [
-      {
-        title: 'Aplikasi baru',
-        icon: AndroidIcon,
-        items: [
-          ['Aplikasi Android sungguhan.', 'Dibangun ulang dari nol: ukurannya sekitar 3 MB, terbuka lebih cepat, dengan ikon dan layar pembuka baru.'],
-          ['Tombol Back Android.', 'Menutup panel, stabilo, atau pengaturan dulu, lalu kembali ke rak dengan rapi.'],
-          ['Unduh EPUB lewat menu Bagikan.', 'Simpan file ke File, Google Drive, atau kirim langsung ke WhatsApp.'],
-          ['Layar tidak mati sendiri', 'selama kamu membaca.'],
-          ['Unduhan resmi.', 'APK kini diunduh langsung dari halaman rilis resmi, tanpa lewat Google Drive.']
-        ]
-      },
-      {
-        title: 'Lebih cepat',
-        icon: Zap,
-        items: [
-          ['Halaman awal 45% lebih ringan.', 'Bagian pembaca buku baru dimuat saat dibutuhkan, jadi aplikasi dan situs terbuka lebih cepat.'],
-          ['Layar pembuka instan', 'muncul seketika, tidak ada lagi layar putih kosong saat memuat.']
-        ]
-      },
-      {
-        title: 'Lebih aman',
-        icon: ShieldCheck,
-        items: [
-          ['Pembayaran lebih aman.', 'Total harga dihitung langsung oleh server dan tidak bisa diubah dari perangkat.'],
-          ['Bukti bayar terlindungi.', 'Foto bukti bayar hanya bisa dilihat admin dan dihapus otomatis setelah pesanan diproses.'],
-          ['Akun lebih aman.', 'Kata sandi akun baru minimal 8 karakter.'],
-          ['Perlindungan buku dan file', 'diperketat agar koleksimu tidak bisa diakses pihak lain.']
-        ]
-      },
-      {
-        title: 'Rak lebih rapi',
-        icon: LibraryBig,
-        items: [
-          ['Buku contoh disembunyikan', 'otomatis dari rak setelah kamu membeli ebook pertamamu.']
-        ]
-      }
-    ]
-  },
-  {
-    version: '2.0',
-    date: 'Oktober 2026',
-    groups: [
-      {
-        title: 'Pembaruan',
-        icon: RefreshCw,
-        items: [
-          ['Nama baru: Ruang Bacaan.', 'Ruang Baca resmi berganti nama menjadi Ruang Bacaan.'],
-          ['Alamat baru:', 'ruangbacaan.my.id.'],
-          ['Layar tidak mati sendiri', 'saat kamu sedang membaca.'],
-          ['Sampul buku tampil jauh lebih cepat', 'saat pertama kali membuka rak.'],
-          ['Katalog lebih lengkap:', 'terurut berdasarkan penulis, dan edisi berbeda dari judul yang sama kini tampil terpisah.'],
-          ['Tampilan dan performa', 'diperbarui di seluruh aplikasi.']
-        ]
-      }
-    ]
-  }
-];
-const APP_RELEASE = CHANGELOG[0];
-
-// APK di Google Drive (link unduh langsung, file harus dibagikan "Siapa saja yang memiliki link")
-const APK_URL = 'https://drive.google.com/uc?export=download&id=1_is99vclr1_Qum3ryq1EC_NfLgOqYw2T';
-import { Capacitor } from '@capacitor/core';
+const APK_URL = 'https://drive.google.com/file/d/1hRqyKylrdPNaErseHJrM8Ow_PEu2FKBJ/view?usp=drive_link';
 import './styles.css';
-
-// Berjalan sebagai aplikasi Android (Capacitor) atau di browser biasa
-const IS_NATIVE = Capacitor.isNativePlatform();
-const SITE_URL = 'https://ruangbacaan.my.id/';
-// Tautan di email (konfirmasi akun, reset sandi) selalu diarahkan ke situs, bukan ke alamat internal aplikasi
-const authRedirectUrl = () => IS_NATIVE ? SITE_URL : `${window.location.origin}${window.location.pathname}`;
-
-const blobToBase64 = blob => new Promise((resolve, reject) => {
-  const r = new FileReader();
-  r.onloadend = () => resolve(String(r.result).split(',')[1] || '');
-  r.onerror = () => reject(new Error('Gagal membaca file.'));
-  r.readAsDataURL(blob);
-});
-
-// epub.js (+ jszip dll.) cukup berat, jadi dimuat terpisah hanya saat dibutuhkan
-let epubPromise = null;
-const loadEpub = () => (epubPromise ||= import('epubjs').then(m => m.default));
-
-// Font khusus pembaca dimuat saat pembaca dibuka, bukan saat halaman awal
-let readerFontsLoaded = false;
-const loadReaderFonts = () => {
-  if (readerFontsLoaded || typeof document === 'undefined') return;
-  readerFontsLoaded = true;
-  const l = document.createElement('link');
-  l.rel = 'stylesheet';
-  l.href = 'https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Open+Sans:ital,wght@0,400;0,600;1,400&display=swap';
-  document.head.appendChild(l);
-};
 
 const FONT_FAMILIES = [
   { id: 'Georgia', label: 'Georgia', family: 'Georgia, serif' },
@@ -172,16 +71,6 @@ const downloadEpub = async (book, notify) => {
     const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
     if (error) throw error;
     const blob = new Blob([data], { type: 'application/epub+zip' });
-    if (IS_NATIVE) {
-      // Di aplikasi: simpan sementara lalu buka menu Bagikan (simpan ke Files, Drive, WhatsApp, dll.)
-      const [{ Filesystem, Directory }, { Share }] = await Promise.all([
-        import('@capacitor/filesystem'), import('@capacitor/share')
-      ]);
-      const name = `${safeFileName(book.title)}.epub`;
-      const saved = await Filesystem.writeFile({ path: name, data: await blobToBase64(blob), directory: Directory.Cache });
-      await Share.share({ title: book.title, files: [saved.uri], dialogTitle: 'Simpan atau bagikan EPUB' });
-      return;
-    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -435,7 +324,6 @@ const formatSize = bytes => bytes < 1024*1024 ? `${Math.max(1, Math.round(bytes/
 
 const getBookMeta = async file => {
   const buffer = await file.arrayBuffer();
-  const ePub = await loadEpub();
   const book = ePub(buffer);
   try {
     await book.ready;
@@ -545,15 +433,6 @@ function App() {
 
   useEffect(() => { loadBooks(); }, [loadBooks]);
 
-  // Setelah masuk, siapkan modul pembaca di waktu luang agar buka buku terasa instan
-  useEffect(() => {
-    if (!session?.user) return;
-    const idle = window.requestIdleCallback || (cb => setTimeout(cb, 1500));
-    const cancel = window.cancelIdleCallback || clearTimeout;
-    const id = idle(() => { loadEpub().catch(() => {}); });
-    return () => cancel(id);
-  }, [session?.user?.id]);
-
   const handleAuth = async e => {
     e.preventDefault();
     if (!supabase) return;
@@ -562,7 +441,7 @@ function App() {
     try {
       if (authMode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: authRedirectUrl()
+          redirectTo: `${window.location.origin}${window.location.pathname}`
         });
         if (error) throw error;
         setAuthMessage('Jika email terdaftar, tautan untuk mengatur ulang kata sandi sudah dikirim. Periksa kotak masuk atau folder spam.');
@@ -572,7 +451,7 @@ function App() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: authRedirectUrl() }
+          options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
         });
         if (error) throw error;
         setAuthMessage(data.session ? 'Akun berhasil dibuat. Anda sudah masuk.' : 'Akun dibuat. Periksa email untuk konfirmasi, lalu masuk.');
@@ -741,7 +620,6 @@ function App() {
             const { data, error } = await supabase.storage.from('epub-files').download(book.file_path);
             if (!data || error) continue;
             const buffer = await data.arrayBuffer();
-            const ePub = await loadEpub();
             const bookInst = ePub(buffer);
             await bookInst.ready;
             const coverUrl = await extractCoverFromBook(bookInst);
@@ -1031,7 +909,7 @@ function App() {
   // ---------- Katalog otomatis & pemesanan ----------
   const [tab, setTab] = useState('shelf');
   // Naikkan APP_VERSION setiap ada APK baru agar label "Update" berkedip lagi untuk semua pengguna
-  const APP_VERSION = '3';
+  const APP_VERSION = '2';
   const [appSeen, setAppSeen] = useState(() => {
     try { return localStorage.getItem('rb_app_seen') === APP_VERSION; } catch { return false; }
   });
@@ -1045,6 +923,7 @@ function App() {
   const [catalogError, setCatalogError] = useState('');
   const [catalogSelected, setCatalogSelected] = useState([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutResume, setCheckoutResume] = useState(null); // pesanan 'Belum dibayar' yang dilanjutkan
 
   // Katalog = semua buku milik admin (kecuali buku contoh), diambil lewat fungsi server get_catalog()
   const loadCatalog = async () => {
@@ -1164,6 +1043,39 @@ function App() {
     return { ok: true };
   };
 
+  // ---- QRIS dinamis: pesanan dicatat dulu dengan nominal unik, pembayaran terdeteksi otomatis ----
+  const fetchOrderByCode = async code => {
+    const { data } = await supabase.from('orders')
+      .select('id,code,status,total,pay_amount,unique_code,expires_at,created_at')
+      .eq('code', code).maybeSingle();
+    return data;
+  };
+  const startQrisOrder = async ({ code, total, ids }) => {
+    const { error: rErr } = await supabase.rpc('qris_reserve', { p_code: code, p_total: total });
+    if (rErr) {
+      // Fungsi belum dipasang di Supabase -> pakai alur lama (unggah bukti bayar)
+      if (rErr.code === 'PGRST202' || /qris_reserve/i.test(rErr.message || '')) return { legacy: true };
+      return { ok: false, error: rErr.message || 'Gagal menyiapkan pembayaran.' };
+    }
+    const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
+    if (error) return { ok: false, error: error.message || 'Gagal membuat pesanan.' };
+    const order = await fetchOrderByCode(code);
+    setCatalogSelected([]);
+    loadOrders();
+    if (!order) return { ok: false, error: 'Pesanan tercatat, tetapi gagal dimuat. Cek bagian Pesanan saya.' };
+    return { ok: true, order };
+  };
+  const claimPaid = async (order, proof) => {
+    if (proof) {
+      const { error: upError } = await supabase.storage.from(PROOF_BUCKET).upload(proofPath(order.code), proof, { contentType: 'image/jpeg', upsert: true });
+      if (upError) return { ok: false, error: `Gagal mengunggah bukti bayar: ${upError.message}` };
+    }
+    const { error } = await supabase.rpc('qris_claim_paid', { p_order_id: order.id });
+    if (error) return { ok: false, error: error.message || 'Gagal mengirim konfirmasi.' };
+    loadOrders();
+    return { ok: true };
+  };
+
   const approveOrder = async o => {
     if (!window.confirm(`Terima pesanan ${o.code} dan buka kunci ${(o.order_items || []).length} buku untuk ${o.user_email}?`)) return;
     const { error } = await supabase.rpc('approve_order', { p_order_id: o.id });
@@ -1231,15 +1143,8 @@ function App() {
     notify(next ? 'Buku dijadikan contoh untuk semua pengguna.' : 'Buku tidak lagi menjadi contoh.');
   };
 
-  // Pembeli (sudah punya buku hasil pembelian) tidak perlu lagi melihat buku contoh di raknya
-  const hasPurchased = !isAdmin && books.some(b => b.user_id !== userId && !b.is_sample);
-  const shelfBooks = useMemo(
-    () => hasPurchased ? orderedBooks.filter(b => !(b.is_sample && b.user_id !== userId)) : orderedBooks,
-    [orderedBooks, hasPurchased, userId]
-  );
-
   const filteredBooks = useMemo(() => {
-    const list = shelfBooks.filter(book =>
+    const list = orderedBooks.filter(book =>
       `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase())
     );
     if (sortMode === 'manual') return list;
@@ -1249,30 +1154,7 @@ function App() {
     else if (sortMode === 'title-desc') sorted.sort((a, b) => cmp(b.title, a.title));
     else if (sortMode === 'author-asc') sorted.sort((a, b) => cmp(a.author, b.author) || cmp(a.title, b.title));
     return sorted;
-  }, [shelfBooks, query, sortMode]);
-
-  // Tombol Back Android di level aplikasi
-  const appBackRef = useRef(null);
-  appBackRef.current = () => {
-    if (activeBook) { window.dispatchEvent(new Event('rb:reader-back')); return true; }
-    if (checkoutOpen) { setCheckoutOpen(false); return true; }
-    if (editingBook) { setEditingBook(null); return true; }
-    if (accessBook) { setAccessBook(null); return true; }
-    if (tab !== 'shelf') { setTab('shelf'); return true; }
-    return false;
-  };
-  useEffect(() => {
-    if (!IS_NATIVE) return;
-    let handle = null;
-    let alive = true;
-    import('@capacitor/app').then(async ({ App: CapApp }) => {
-      const h = await CapApp.addListener('backButton', () => {
-        if (!appBackRef.current?.()) CapApp.minimizeApp();
-      });
-      if (alive) handle = h; else h.remove();
-    });
-    return () => { alive = false; handle?.remove(); };
-  }, []);
+  }, [orderedBooks, query, sortMode]);
 
   if (!supabase) return <SetupMissing />;
   if (!authReady) return <div className="loading-screen"><LoaderCircle className="spin" size={28}/><span>Menyiapkan Ruang Bacaan…</span></div>;
@@ -1349,8 +1231,8 @@ function App() {
           <div className="tabs-bar" role="tablist">
             <button role="tab" aria-selected={tab === 'shelf'} className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}><LibraryBig size={16}/> Rak Buku</button>
             <button role="tab" aria-selected={tab === 'catalog'} className={`${tab === 'catalog' ? 'active' : ''}${nudgeCatalog ? ' nudge' : ''}`} onClick={() => setTab('catalog')}><ShoppingBag size={16}/> Katalog</button>
-            {showAppTab && !IS_NATIVE && (
-              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><AndroidIcon size={16}/> <span className="tab-text">Aplikasi Android{!appSeen && <sup className="tab-sup">update</sup>}</span></button>
+            {showAppTab && (
+              <button role="tab" aria-selected={tab === 'app'} className={tab === 'app' ? 'active' : ''} onClick={openAppTab}><Smartphone size={16}/> <span className="tab-text">Aplikasi Android{!appSeen && <sup className="tab-sup">update</sup>}</span></button>
             )}
             {isAdmin && (
               <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
@@ -1362,7 +1244,7 @@ function App() {
           {tab === 'shelf' && (
           <section className="shelf-section">
             <div className="section-heading">
-              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{shelfBooks.length}</span></h2></div>
+              <div><div className="eyebrow muted">KOLEKSI ANDA</div><h2>Rak buku <span className="count">{books.length}</span></h2></div>
               <div className="shelf-tools">
                 <label className="searchbox"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari judul atau penulis…"/></label>
                 <select className="sort-select" value={sortMode} onChange={e => changeSort(e.target.value)} title="Urutkan buku" aria-label="Urutkan buku">
@@ -1448,68 +1330,37 @@ function App() {
               onToggle={toggleCatalogSelect}
               isAdmin={isAdmin}
               orders={orders}
-              onCheckout={() => setCheckoutOpen(true)}
+              onCheckout={() => { setCheckoutResume(null); setCheckoutOpen(true); }}
+              onResumePay={o => { setCheckoutResume(o); setCheckoutOpen(true); }}
               onClear={() => setCatalogSelected([])}
             />
           )}
 
           {tab === 'app' && showAppTab && (
             <section className="app-dl">
-              <div className="app-dl-card app-dl-hero">
-                <div className="app-dl-icon"><AndroidIcon size={32}/></div>
-                <span className="app-dl-badge">Versi {APP_RELEASE.version}</span>
-                <h2>Ruang Bacaan untuk Android</h2>
-                <p className="app-dl-lead">Baca koleksi ebook-mu langsung dari aplikasi, tanpa membuka browser. Akun, buku, dan progres bacamu sama persis dengan di situs.</p>
-                <div className="app-dl-actions">
-                  <a className="app-dl-btn" href={APK_URL} rel="noopener"><Download size={18}/> Unduh Aplikasi (APK)</a>
-                  <ul className="app-dl-meta">
-                    <li><AndroidIcon size={13}/> Android 7.0+</li>
-                    <li>± 3 MB</li>
-                    <li>{APP_RELEASE.shortDate}</li>
-                  </ul>
-                </div>
+              <div className="app-dl-icon"><Smartphone size={30}/></div>
+              <span className="app-dl-badge">Pembaruan besar</span>
+              <h2>Ruang Bacaan untuk Android</h2>
+              <p>Baca koleksi ebook-mu langsung dari HP lewat aplikasi, tanpa membuka browser. Akun dan buku yang sudah kamu beli akan sama persis.</p>
+              <a className="app-dl-btn" href={APK_URL} target="_blank" rel="noopener noreferrer"><Download size={18}/> Unduh Aplikasi (APK)</a>
+              <div className="app-dl-log">
+                <h3>Yang baru di versi ini</h3>
+                <ul>
+                  <li><strong>Nama baru: Ruang Bacaan.</strong> Ruang Baca resmi berganti nama menjadi Ruang Bacaan.</li>
+                  <li><strong>Alamat baru:</strong> ruangbacaan.my.id. Aplikasi versi lama sebaiknya diganti dengan versi ini.</li>
+                  <li><strong>Layar tidak mati sendiri</strong> saat kamu sedang membaca.</li>
+                  <li><strong>Sampul buku tampil jauh lebih cepat</strong> saat pertama kali membuka rak.</li>
+                  <li><strong>Katalog lebih lengkap:</strong> terurut berdasarkan penulis, dan edisi berbeda dari judul yang sama kini tampil terpisah.</li>
+                  <li><strong>Tampilan dan performa</strong> diperbarui di seluruh aplikasi.</li>
+                </ul>
+                <p className="app-dl-note">Pasang versi baru di atas versi lama. Akun, buku, dan progres bacamu tetap aman.</p>
               </div>
-
-              <div className="app-dl-notice">
-                <Info size={18}/>
-                <span>Masih memakai aplikasi Ruang Bacaan <b>versi lama</b> (sebelum 2.1.0)? Hapus dulu, lalu pasang versi ini. Akun dan bukumu tetap aman di cloud. Pembaruan berikutnya cukup dipasang di atasnya.</span>
-              </div>
-
-              <div className="app-dl-card">
-                <h3 className="app-dl-title">Cara memasang</h3>
-                <ol className="app-dl-steps">
-                  <li><span>Ketuk <b>Unduh Aplikasi (APK)</b>, lalu tunggu file selesai terunduh.</span></li>
-                  <li><span>Buka file <b>RuangBacaan.apk</b> dari notifikasi atau folder Download.</span></li>
-                  <li><span>Jika diminta, izinkan pemasangan dari sumber ini, lalu ketuk <b>Pasang</b>.</span></li>
-                  <li><span>Buka Ruang Bacaan dan masuk dengan akun yang sama.</span></li>
-                </ol>
-              </div>
-
-              <div className="app-dl-card">
-                <h3 className="app-dl-title">Changelog</h3>
-                {CHANGELOG.map((rel, i) => (
-                  <details className="changelog-entry" key={rel.version} open={i === 0}>
-                    <summary>
-                      <span className="changelog-version">Versi {rel.version}</span>
-                      {i === 0 && <span className="changelog-tag">Terbaru</span>}
-                      <span className="changelog-date">{rel.date}</span>
-                    </summary>
-                    <div className="changelog-body">
-                      {rel.groups.map(g => {
-                        const Icon = g.icon || CheckCircle2;
-                        return (
-                          <div className="changelog-group" key={g.title}>
-                            <h4><Icon size={15}/> {g.title}</h4>
-                            <ul>
-                              {g.items.map(([head, body]) => <li key={head}><strong>{head}</strong> {body}</li>)}
-                            </ul>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </details>
-                ))}
-              </div>
+              <ol className="app-dl-steps">
+                <li>Ketuk tombol di atas, lalu pilih Unduh di halaman Google Drive.</li>
+                <li>Buka file APK yang sudah terunduh.</li>
+                <li>Jika diminta, izinkan pemasangan dari sumber ini di pengaturan HP, lalu pasang.</li>
+                <li>Buka Ruang Bacaan dan masuk dengan akun yang sama.</li>
+              </ol>
             </section>
           )}
 
@@ -1522,8 +1373,13 @@ function App() {
       {checkoutOpen && (
         <CheckoutModal
           items={catalogItems.filter(i => catalogSelected.includes(i.id) && !books.some(b => b.id === i.book_id || bookKey(b.title, b.author, b.file_size) === bookKey(i.title, i.author, i.file_size)))}
+          resumeOrder={checkoutResume}
           email={session?.user?.email || ''}
-          onClose={() => setCheckoutOpen(false)}
+          onClose={() => { setCheckoutOpen(false); setCheckoutResume(null); loadOrders(); }}
+          onStart={startQrisOrder}
+          onFetch={fetchOrderByCode}
+          onClaim={claimPaid}
+          onPaid={() => loadOrders()}
           onSubmit={submitOrder}
           onConfirmed={() => {
             setCheckoutOpen(false);
@@ -1718,7 +1574,6 @@ function BookCard({book, progress, index, cover, onOpen, onEdit, onDelete, onDow
 
 function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded, notify}) {
   const viewerRef = useRef(null);
-  useEffect(() => { loadReaderFonts(); }, []);
   const renditionRef = useRef(null);
   const epubRef = useRef(null);
   const saveTimer = useRef(null);
@@ -1757,16 +1612,8 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
 
   const [bookTitle, setBookTitle] = useState(book.title);
 
-  // Layar tetap menyala selama membaca (Screen Wake Lock API, atau plugin native di aplikasi)
+  // Layar tetap menyala selama membaca (Screen Wake Lock API)
   useEffect(() => {
-    if (IS_NATIVE) {
-      let plugin = null;
-      import('@capacitor-community/keep-awake').then(({ KeepAwake }) => {
-        plugin = KeepAwake;
-        KeepAwake.keepAwake().catch(() => {});
-      }).catch(() => {});
-      return () => { plugin?.allowSleep().catch(() => {}); };
-    }
     let lock = null;
     let released = false;
     const request = async () => {
@@ -2205,8 +2052,6 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
         if (downloadError) throw downloadError;
         if (cancelled) return;
         const buffer = await data.arrayBuffer();
-        const ePub = await loadEpub();
-        if (cancelled) return;
         epub = ePub(buffer);
         epubRef.current = epub;
         await epub.ready;
@@ -2226,7 +2071,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
         const flow = viewMode === 'scroll' ? 'scrolled-doc' : 'paginated';
         const manager = viewMode === 'scroll' ? 'continuous' : 'default';
 
-        rendition = epub.renderTo(viewerRef.current, { width: '100%', height: '100%', spread, flow, manager, allowScriptedContent: false });
+        rendition = epub.renderTo(viewerRef.current, { width: '100%', height: '100%', spread, flow, manager });
         renditionRef.current = rendition;
 
         applyReadingStyles(rendition, readerTheme, fontFamily, fontSize, lineHeight, pageMargin, textAlign);
@@ -2320,8 +2165,7 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
       height: '100%',
       spread,
       flow,
-      manager,
-      allowScriptedContent: false
+      manager
     });
     renditionRef.current = rendition;
 
@@ -2386,20 +2230,6 @@ function Reader({book, savedProgress, userId, onClose, onProgress, onCoverLoaded
   turnRef.current = turn;
   const move = direction => turn(direction);
   const goTo = href => { renditionRef.current?.display(href); };
-
-  // Tombol Back Android: tutup panel dulu, baru keluar dari pembaca
-  const backHandlerRef = useRef(null);
-  backHandlerRef.current = () => {
-    if (selectionPopover || activeHighlight) { setSelectionPopover(null); setActiveHighlight(null); return; }
-    if (settingsOpen) { setSettingsOpen(false); return; }
-    if (navPanelOpen) { setNavPanelOpen(false); return; }
-    handleClose();
-  };
-  useEffect(() => {
-    const onBack = () => backHandlerRef.current?.();
-    window.addEventListener('rb:reader-back', onBack);
-    return () => window.removeEventListener('rb:reader-back', onBack);
-  }, []);
 
   const handleClose = () => {
     clearTimeout(saveTimer.current);
@@ -3161,7 +2991,7 @@ function AuthScreen(props) {
         {authMode !== 'forgot' && (
         <label>Kata sandi
           <span className="password-field">
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={authMode === 'login' ? 'Kata sandi Anda' : 'Minimal 8 karakter'} required minLength={authMode === 'login' ? 6 : 8} maxLength={72} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
             <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)} title={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
               {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
             </button>
@@ -3200,7 +3030,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
   const submit = async e => {
     e.preventDefault();
     setMsg('');
-    if (pw.length < 8) { setMsg('Kata sandi minimal 8 karakter.'); return; }
+    if (pw.length < 6) { setMsg('Kata sandi minimal 6 karakter.'); return; }
     if (pw !== pw2) { setMsg('Konfirmasi kata sandi tidak sama.'); return; }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
@@ -3219,7 +3049,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
       <form onSubmit={submit} className="auth-form">
         <label>Kata sandi baru
           <span className="password-field">
-            <input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Minimal 8 karakter" required minLength={8} maxLength={72} autoComplete="new-password" autoFocus/>
+            <input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Minimal 6 karakter" required minLength={6} autoComplete="new-password" autoFocus/>
             <button type="button" className="password-toggle" onClick={() => setShow(v => !v)} title={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
               {show ? <EyeOff size={18}/> : <Eye size={18}/>}
             </button>
@@ -3227,7 +3057,7 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
         </label>
         <label>Ulangi kata sandi baru
           <span className="password-field">
-            <input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Ketik ulang kata sandi" required minLength={8} maxLength={72} autoComplete="new-password"/>
+            <input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Ketik ulang kata sandi" required minLength={6} autoComplete="new-password"/>
           </span>
         </label>
         {msg && <div className="auth-message"><AlertCircle size={16}/>{msg}</div>}
@@ -3240,6 +3070,32 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
 // Dua buku dianggap sama hanya jika judul, penulis, dan ukuran file sama (versi/edisi berbeda tetap terpisah)
 const bookKey = (title, author, size) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}|${Number(size || 0)}`;
 const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
+
+// Isi QR dari qris.png (QRIS statis). Nominal disisipkan per pesanan menjadi QRIS dinamis.
+const QRIS_STATIC = '00020101021126610016ID.CO.SHOPEE.WWW01189360091800227881790208227881790303UMI51440014ID.CO.QRIS.WWW0215ID10264895026290303UMI5204581753033605802ID5912Haris DevLab6010PURWAKARTA61054118162070703A0163048C59';
+const qrisCrc = str => {
+  let crc = 0xffff;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let b = 0; b < 8; b++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+};
+const qrisWithAmount = (payload, amount) => {
+  const tags = [];
+  for (let i = 0; i < payload.length;) {
+    const id = payload.slice(i, i + 2);
+    const len = Number(payload.slice(i + 2, i + 4));
+    tags.push([id, payload.slice(i + 4, i + 4 + len)]);
+    i += 4 + len;
+  }
+  const kept = tags.filter(([id]) => id !== '54' && id !== '63').map(([id, v]) => (id === '01' ? ['01', '12'] : [id, v]));
+  kept.push(['54', String(Math.round(amount))]);
+  kept.sort((a, b) => Number(a[0]) - Number(b[0]));
+  const body = kept.map(([id, v]) => `${id}${String(v.length).padStart(2, '0')}${v}`).join('') + '6304';
+  return body + qrisCrc(body);
+};
+
 const formatRupiah = n => `Rp ${Number(n || 0).toLocaleString('id-ID')}`;
 
 // Aturan harga: 1 ebook = Rp5.000 | Paket 3 ebook = Rp10.000 | Paket 10 ebook = Rp30.000
@@ -3295,7 +3151,7 @@ const makeThumb = (src, width = 200) => new Promise(resolve => {
   img.src = src;
 });
 
-const ORDER_STATUS = { pending: 'Menunggu', approved: 'Diterima', rejected: 'Ditolak' };
+const ORDER_STATUS = { pending: 'Menunggu', approved: 'Diterima', rejected: 'Ditolak', awaiting_payment: 'Belum dibayar', expired: 'Kedaluwarsa' };
 
 function OrdersSection({ orders, onApprove, onReject }) {
   const [showHistory, setShowHistory] = useState(false);
@@ -3307,7 +3163,8 @@ function OrdersSection({ orders, onApprove, onReject }) {
     else setProofView({ code: o.code, url: data.signedUrl });
   };
   const pending = orders.filter(o => o.status === 'pending');
-  const history = orders.filter(o => o.status !== 'pending');
+  const awaiting = orders.filter(o => o.status === 'awaiting_payment');
+  const history = orders.filter(o => o.status !== 'pending' && o.status !== 'awaiting_payment');
   const fmt = iso => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 
   const renderOrder = o => (
@@ -3317,11 +3174,17 @@ function OrdersSection({ orders, onApprove, onReject }) {
         <span className={`status-pill ${o.status}`}>{ORDER_STATUS[o.status] || o.status}</span>
       </div>
       <div className="order-card-meta">{o.user_email} · {fmt(o.created_at)}</div>
+      {o.paid_via === 'qris_auto' && o.status === 'pending' && (
+        <div className="order-auto-note"><AlertCircle size={14}/> Pembayaran terdeteksi otomatis, tetapi persetujuan otomatis gagal. Silakan klik Terima.</div>
+      )}
+      {o.paid_via === 'qris_auto' && o.status === 'approved' && (
+        <div className="order-auto-note ok"><CheckCircle2 size={14}/> Lunas, terdeteksi otomatis</div>
+      )}
       <ul className="order-books">
         {(o.order_items || []).map((it, i) => <li key={`${it.book_id || it.title}-${i}`}>{it.title}</li>)}
       </ul>
       <div className="order-card-foot">
-        <span className="order-total">{formatRupiah(o.total)}</span>
+        <span className="order-total">{formatRupiah(o.pay_amount || o.total)}{o.pay_amount ? <small className="order-total-base"> (harga {formatRupiah(o.total)})</small> : null}</span>
         {o.status === 'pending' && (
           <div className="order-actions">
             <button className="order-proof" onClick={() => viewProof(o)}><Eye size={15}/> Lihat bukti</button>
@@ -3337,7 +3200,10 @@ function OrdersSection({ orders, onApprove, onReject }) {
     <div className="section-heading">
       <div><div className="eyebrow muted">PESANAN MASUK</div><h2>Pesanan <span className="count">{pending.length}</span></h2></div>
     </div>
-    <p className="catalog-note">Cek bukti bayar lewat tombol <b>Lihat bukti</b>, lalu klik <b>Terima</b>. Semua buku dalam pesanan otomatis masuk ke rak pembeli. Foto bukti dihapus otomatis setelah pesanan diterima atau ditolak.</p>
+    <p className="catalog-note">Pembayaran QRIS dengan nominal yang tepat diterima <b>otomatis</b>. Pesanan di bawah ini perlu dicek manual: lihat bukti bayar, lalu klik <b>Terima</b>. Foto bukti dihapus otomatis setelah pesanan diterima atau ditolak.</p>
+    {awaiting.length > 0 && (
+      <p className="order-awaiting-note"><Clock size={14}/> {awaiting.length} pesanan sedang menunggu pembeli membayar ({awaiting.map(o => formatRupiah(o.pay_amount)).join(', ')}).</p>
+    )}
 
     {proofView && (
       <div className="modal-backdrop" onClick={() => setProofView(null)}>
@@ -3384,7 +3250,7 @@ const COVER_PALETTES = [
 ];
 const hashStr = str => { let h = 0; for (const c of String(str || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, onToggle, isAdmin, orders = [], onCheckout, onClear }) {
+function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, onToggle, isAdmin, orders = [], onCheckout, onResumePay, onClear }) {
   const [q, setQ] = useState('');
   const cmpText = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
   const list = items
@@ -3417,8 +3283,10 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
         {orders.slice(0, 5).map(o => (
           <div className="my-order" key={o.id}>
             <span className="mo-code">{o.code}</span>
-            <span className="mo-meta">{(o.order_items || []).length} buku · {formatRupiah(o.total)}</span>
-            <span className={`status-pill ${o.status}`}>{ORDER_STATUS[o.status] || o.status}</span>
+            <span className="mo-meta">{(o.order_items || []).length} buku · {formatRupiah(o.pay_amount || o.total)}</span>
+            {o.status === 'awaiting_payment' && new Date(o.expires_at).getTime() > Date.now()
+              ? <button className="mo-pay" onClick={() => onResumePay?.(o)}><QrCode size={14}/> Bayar</button>
+              : <span className={`status-pill ${o.status}`}>{ORDER_STATUS[o.status] || o.status}</span>}
           </div>
         ))}
       </div>
@@ -3496,12 +3364,237 @@ function CatalogSection({ items, loading, error, ownedIds, ownedKeys, selected, 
   </section>;
 }
 
-function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
-  const [code] = useState(() => {
-    // Kode pesanan sulit ditebak: waktu + 6 karakter acak kriptografis
-    const rnd = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
-    return `RB-${Date.now().toString(36).toUpperCase()}-${rnd}`;
-  });
+// Nominal dengan 3 digit terakhir ditonjolkan (kode unik)
+function UniqueAmount({ amount }) {
+  const str = Number(amount || 0).toLocaleString('id-ID');
+  return <span className="qr-amount-value">Rp{str.slice(0, -3)}<mark>{str.slice(-3)}</mark></span>;
+}
+
+function CheckoutModal({ items, resumeOrder, email, onClose, onStart, onFetch, onClaim, onPaid, onSubmit, onConfirmed }) {
+  const [code] = useState(() => resumeOrder?.code || `RB-${Date.now().toString(36).toUpperCase()}`);
+  const [stage, setStage] = useState(resumeOrder ? 'pay' : 'review'); // review | pay | claimed | paid | rejected | legacy
+  const [order, setOrder] = useState(resumeOrder || null);
+  const [bookCount] = useState(() => resumeOrder ? (resumeOrder.order_items || []).length : items.length);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [qrUrl, setQrUrl] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+  const [copied, setCopied] = useState(false);
+  const [showClaim, setShowClaim] = useState(false);
+  const [proof, setProof] = useState(null);
+  const [proofUrl, setProofUrl] = useState('');
+  const [proofErr, setProofErr] = useState('');
+  const [proofBusy, setProofBusy] = useState(false);
+  const sendingRef = useRef(false);
+  const calc = calcOrder(items.length);
+
+  useEffect(() => () => { if (proofUrl) URL.revokeObjectURL(proofUrl); }, [proofUrl]);
+
+  // QR dinamis berisi nominal unik
+  useEffect(() => {
+    if (!order?.pay_amount) return;
+    let alive = true;
+    QRCode.toDataURL(qrisWithAmount(QRIS_STATIC, order.pay_amount), { width: 560, margin: 1, errorCorrectionLevel: 'M' })
+      .then(url => { if (alive) setQrUrl(url); })
+      .catch(() => { if (alive) setErr('QRIS gagal dibuat. Muat ulang halaman lalu coba lagi.'); });
+    return () => { alive = false; };
+  }, [order?.pay_amount]);
+
+  // Hitung mundur
+  useEffect(() => {
+    if (stage !== 'pay') return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [stage]);
+
+  // Cek status pembayaran berkala sampai diterima
+  useEffect(() => {
+    if (!order?.code || !['pay', 'claimed'].includes(stage)) return;
+    let alive = true;
+    const check = async () => {
+      const fresh = await onFetch(order.code).catch(() => null);
+      if (!alive || !fresh) return;
+      setOrder(prev => ({ ...prev, ...fresh }));
+      if (fresh.status === 'approved') { setStage('paid'); onPaid?.(); }
+      else if (fresh.status === 'rejected') setStage('rejected');
+      else if (fresh.status === 'pending' && stage === 'pay') setStage('claimed');
+    };
+    check();
+    const t = setInterval(check, 3000);
+    const onVis = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { alive = false; clearInterval(t); document.removeEventListener('visibilitychange', onVis); };
+  }, [order?.code, stage]);
+
+  const start = async () => {
+    if (sendingRef.current || busy || !items.length) return;
+    sendingRef.current = true;
+    setBusy(true); setErr('');
+    let res = { ok: false };
+    try { res = await onStart({ code, total: calc.total, ids: items.map(i => i.book_id) }); } catch (e) { res = { ok: false, error: e.message }; }
+    setBusy(false);
+    if (res.legacy) { setStage('legacy'); return; }
+    if (!res.ok) { sendingRef.current = false; setErr(res.error || 'Gagal membuat pesanan.'); return; }
+    setOrder(res.order);
+    if (res.order.status === 'awaiting_payment' && res.order.pay_amount) setStage('pay');
+    else setStage('claimed'); // trigger belum terpasang: pesanan masuk sebagai pesanan biasa
+  };
+
+  const pickProof = async e => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setProofErr('');
+    if (!f.type.startsWith('image/')) { setProofErr('Pilih file berupa gambar (foto atau tangkapan layar).'); return; }
+    setProofBusy(true);
+    try { const blob = await compressProof(f); setProof(blob); setProofUrl(URL.createObjectURL(blob)); }
+    catch (er) { setProofErr(er.message || 'Gambar tidak dapat diproses.'); }
+    setProofBusy(false);
+  };
+
+  const sendClaim = async () => {
+    if (busy || !proof) return;
+    setBusy(true); setErr('');
+    const res = await onClaim(order, proof).catch(e => ({ ok: false, error: e.message }));
+    setBusy(false);
+    if (!res.ok) { setErr(res.error); return; }
+    setStage('claimed');
+  };
+
+  const copyAmount = async () => {
+    try { await navigator.clipboard.writeText(String(order.pay_amount)); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch {}
+  };
+
+  if (stage === 'legacy') {
+    return <ManualCheckoutModal items={items} email={email} onClose={onClose} onSubmit={onSubmit} onConfirmed={onConfirmed}/>;
+  }
+
+  const expiresAt = order?.expires_at ? new Date(order.expires_at).getTime() : 0;
+  const left = Math.max(0, expiresAt - now);
+  const expired = stage === 'pay' && expiresAt > 0 && left <= 0;
+  const mm = String(Math.floor(left / 60000)).padStart(2, '0');
+  const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+  const titles = { review: 'Pembayaran', pay: 'Bayar dengan QRIS', claimed: 'Menunggu konfirmasi', paid: 'Pembayaran diterima', rejected: 'Pesanan ditolak' };
+  const busyLock = busy && stage === 'review';
+
+  return <div className="modal-backdrop" onClick={() => !busyLock && onClose()}>
+    <div className="modal-card checkout-card" onClick={e => e.stopPropagation()}>
+      <div className="modal-header">
+        <div className="modal-title">
+          {stage === 'paid' ? <CheckCircle2 size={18} className="modal-icon-teal"/> : stage === 'pay' ? <QrCode size={18} className="modal-icon-teal"/> : <ShoppingBag size={18} className="modal-icon-teal"/>}
+          <span>{titles[stage]}</span>
+        </div>
+        <button className="modal-close-btn" onClick={onClose} disabled={busyLock} title="Tutup"><X size={18}/></button>
+      </div>
+
+      <div className="checkout-code">Kode pesanan <b>{code}</b></div>
+
+      {stage === 'review' && <>
+        <div className="checkout-items">
+          {items.map(it => (
+            <div className="checkout-row" key={it.id}><span title={it.title}>{it.title}</span></div>
+          ))}
+          {calc.parts.map(pt => (
+            <div className="checkout-row part" key={pt.qty}><span>{pt.count}× {pt.label}</span><b>{formatRupiah(pt.count * pt.price)}</b></div>
+          ))}
+          <div className="checkout-row total"><span>Total</span><b>{formatRupiah(calc.total)}</b></div>
+        </div>
+        <div className="qr-explain">
+          <ScanLine size={18}/>
+          <p>Kamu akan mendapat QRIS dengan <b>nominal unik</b> (total ditambah beberapa rupiah). Bayar sesuai nominal itu dan buku <b>langsung masuk ke rak</b> tanpa perlu menunggu admin.</p>
+        </div>
+        {err && <div className="proof-error">{err}</div>}
+        <button className="primary-button pay-button" onClick={start} disabled={busy || !items.length}>
+          {busy ? <LoaderCircle size={18} className="spin"/> : <QrCode size={18}/>}
+          {busy ? 'Menyiapkan QRIS…' : 'Lanjut ke pembayaran'}
+        </button>
+      </>}
+
+      {stage === 'pay' && order && <>
+        <div className="qr-amount">
+          <span className="qr-amount-label">Bayar tepat</span>
+          <UniqueAmount amount={order.pay_amount}/>
+          <button className="qr-copy" onClick={copyAmount} title="Salin nominal">{copied ? <Check size={14}/> : <Copy size={14}/>}{copied ? 'Tersalin' : 'Salin'}</button>
+        </div>
+        <p className="qr-amount-note">
+          Sudah termasuk kode unik <b>Rp{order.unique_code}</b> agar pembayaranmu dikenali otomatis. Jangan dibulatkan.
+        </p>
+
+        {!expired ? <>
+          <div className="qris-box">
+            <div className="qris-name"><span>Atas nama</span><b>{QRIS_NAME}</b></div>
+            {qrUrl ? <img src={qrUrl} alt={`QRIS ${formatRupiah(order.pay_amount)}`}/> : <div className="qr-loading"><LoaderCircle size={22} className="spin"/></div>}
+            <div className="qris-caption">Nominal sudah terisi otomatis saat di-scan</div>
+          </div>
+          <div className="qr-status">
+            <LoaderCircle size={16} className="spin"/>
+            <span>Menunggu pembayaran. Halaman ini berubah otomatis setelah pembayaran diterima.</span>
+            <span className="qr-timer"><Clock size={13}/> {mm}:{ss}</span>
+          </div>
+          {qrUrl && <a className="secondary-button qr-save" href={qrUrl} download={`QRIS-${order.code}.png`}><Download size={16}/> Simpan gambar QRIS</a>}
+          <p className="qr-tip">Bayar dari HP yang sama? Simpan gambar QRIS, lalu pilih <b>scan dari galeri</b> di aplikasi e-wallet atau m-banking.</p>
+        </> : (
+          <div className="info-banner qr-expired">
+            Waktu pembayaran habis. Jika kamu <b>sudah terlanjur membayar</b> dengan nominal di atas, pembayaran tetap dikenali selama beberapa menit. Halaman ini akan berubah otomatis. Jika belum membayar, tutup jendela ini dan buat pesanan baru.
+          </div>
+        )}
+
+        <button className="order-history-toggle qr-claim-toggle" onClick={() => setShowClaim(v => !v)}>
+          {showClaim ? 'Tutup' : 'Sudah bayar tapi belum terdeteksi?'}
+        </button>
+        {showClaim && (
+          <div className="proof-box">
+            <label className={`proof-pick${proof ? ' has' : ''}`}>
+              <input type="file" accept="image/*" onChange={pickProof} disabled={busy || proofBusy} hidden/>
+              {proofBusy ? <><LoaderCircle size={17} className="spin"/> Memproses gambar…</>
+                : proof ? <><Check size={17}/> Bukti bayar dipilih. Ketuk untuk mengganti</>
+                : <><Upload size={17}/> Unggah bukti bayar</>}
+            </label>
+            {proofUrl && <img className="proof-preview" src={proofUrl} alt="Pratinjau bukti bayar"/>}
+            {proofErr && <div className="proof-error">{proofErr}</div>}
+            <button className="primary-button pay-button" onClick={sendClaim} disabled={busy || !proof}>
+              {busy ? <LoaderCircle size={18} className="spin"/> : <Check size={18}/>}
+              {busy ? 'Mengirim…' : 'Kirim bukti ke admin'}
+            </button>
+            <div className="proof-note">Admin akan memeriksa bukti secara manual. Foto otomatis dihapus setelah pesanan diproses.</div>
+          </div>
+        )}
+        {err && <div className="proof-error">{err}</div>}
+      </>}
+
+      {stage === 'claimed' && (
+        <div className="checkout-done">
+          <div className="checkout-done-icon wait"><Clock size={26}/></div>
+          <h3>Sedang diperiksa admin</h3>
+          <p>Pesananmu sudah tercatat dan akan dicek manual. Buku otomatis terbuka di akun <b>{email}</b> setelah dikonfirmasi. Jendela ini boleh ditutup.</p>
+          <button className="secondary-button" onClick={onClose}>Tutup</button>
+        </div>
+      )}
+
+      {stage === 'paid' && (
+        <div className="checkout-done">
+          <div className="checkout-done-icon"><Check size={28}/></div>
+          <h3>Terima kasih!</h3>
+          <p>Pembayaran {order?.pay_amount ? formatRupiah(order.pay_amount) : ''} sudah diterima. {bookCount ? `${bookCount} buku` : 'Buku'} sudah masuk ke rak dan siap dibaca.</p>
+          <button className="primary-button" onClick={onClose}><LibraryBig size={17}/> Lihat rak buku</button>
+        </div>
+      )}
+
+      {stage === 'rejected' && (
+        <div className="checkout-done">
+          <div className="checkout-done-icon bad"><X size={26}/></div>
+          <h3>Pesanan ditolak</h3>
+          <p>Silakan hubungi admin jika kamu merasa sudah membayar.</p>
+          <button className="secondary-button" onClick={onClose}>Tutup</button>
+        </div>
+      )}
+    </div>
+  </div>;
+}
+
+// Alur lama (QRIS statis + wajib unggah bukti). Dipakai otomatis jika SQL qris_auto.sql belum dijalankan.
+function ManualCheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
+  const [code] = useState(() => `RB-${Date.now().toString(36).toUpperCase()}`);
   const [busy, setBusy] = useState(false);
   const [qrisOk, setQrisOk] = useState(true);
   const [proof, setProof] = useState(null);       // Blob JPEG hasil kompresi
@@ -3515,7 +3608,6 @@ function CheckoutModal({ items, email, onClose, onSubmit, onConfirmed }) {
     e.target.value = '';
     if (!f) return;
     setProofErr('');
-    if (f.size > 15 * 1024 * 1024) { setProofErr('Ukuran gambar maksimal 15 MB.'); return; }
     if (!f.type.startsWith('image/')) { setProofErr('Pilih file berupa gambar (foto atau tangkapan layar).'); return; }
     setProofBusy(true);
     try {
