@@ -59,7 +59,34 @@ must(mainTag, 'script utama tidak ditemukan');
 const preloads = [...page.matchAll(/<link rel="modulepreload" crossorigin href="([^"]+)">\n?\s*/g)];
 for (const m of preloads) page = page.replace(m[0], '');
 // Pemicu: tepat setelah first-contentful-paint (PerformanceObserver), cadangan double-rAF / batas waktu.
-const start = `(function(){var done=0;function go(){if(done)return;done=1;${JSON.stringify(preloads.map(m => m[1]))}.forEach(function(h){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=h;document.head.appendChild(l)});var s=document.createElement('script');s.type='module';s.crossOrigin='';s.src=${JSON.stringify(mainTag[1])};document.head.appendChild(s)}if(document.documentElement.className.indexOf('rb-session')>-1){go();return}try{new PerformanceObserver(function(l){if(l.getEntriesByName('first-contentful-paint').length)setTimeout(go,0)}).observe({type:'paint',buffered:true})}catch(e){requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(go,0)})})}setTimeout(go,3000)})();`;
+// Pengaman: jika file aplikasi gagal dimuat (mis. cache rusak saat deploy), ambil ulang semua file
+// langsung dari server lalu muat ulang sekali. Jika 15 detik aplikasi belum tampil, tampilkan tombol Muat ulang.
+const files = [...preloads.map(m => m[1]), mainTag[1]];
+const start = `(function(){
+var F=${JSON.stringify(files)},done=0,err='';
+addEventListener('error',function(e){if(!err)err=(e.message||(e.target&&(e.target.src||e.target.href))||'')+''},true);
+addEventListener('unhandledrejection',function(e){if(!err)err=String(e.reason&&e.reason.message||e.reason||'')});
+function retried(){try{return sessionStorage.getItem('rb_retry')==='1'}catch(e){return true}}
+function freshReload(){try{sessionStorage.setItem('rb_retry','1')}catch(e){}
+Promise.all(F.map(function(u){return fetch(u,{cache:'reload'}).catch(function(){})})).then(function(){location.reload()})}
+function fail(){var sp=document.getElementById('rb-splash');if(!sp)return;
+document.documentElement.classList.add('rb-session');
+if(!retried()){freshReload();return}
+if(sp.getAttribute('data-fail'))return;sp.setAttribute('data-fail','1');
+var p=document.createElement('p');p.style.cssText='margin:6px 0 0;max-width:320px;text-align:center;font-size:13px;line-height:1.6';
+p.textContent='Aplikasi belum berhasil dimuat. Periksa koneksi internet, lalu muat ulang.';
+var b=document.createElement('button');b.type='button';b.textContent='Muat ulang';
+b.style.cssText='height:40px;padding:0 18px;border-radius:11px;border:1px solid #426c5b;background:#426c5b;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer';
+b.addEventListener('click',function(){try{sessionStorage.removeItem('rb_retry')}catch(e){}freshReload()});
+sp.appendChild(p);sp.appendChild(b);
+if(err){var d=document.createElement('small');d.style.cssText='max-width:320px;text-align:center;opacity:.7;word-break:break-word';d.textContent='Detail: '+err.slice(0,160);sp.appendChild(d)}}
+function go(){if(done)return;done=1;
+F.slice(0,-1).forEach(function(h){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=h;document.head.appendChild(l)});
+var s=document.createElement('script');s.type='module';s.crossOrigin='';s.src=F[F.length-1];s.onerror=fail;document.head.appendChild(s);
+setTimeout(function(){if(document.getElementById('rb-splash'))fail()},15000)}
+if(document.documentElement.className.indexOf('rb-session')>-1){go();return}
+try{new PerformanceObserver(function(l){if(l.getEntriesByName('first-contentful-paint').length)setTimeout(go,0)}).observe({type:'paint',buffered:true})}catch(e){requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(go,0)})})}
+setTimeout(go,3000)})();`.replace(/\n/g, '');
 page = page.replace(mainTag[0], inline(start));
 
 // Izinkan kedua script inline di CSP (hanya ada di build web; build Android tanpa meta CSP)

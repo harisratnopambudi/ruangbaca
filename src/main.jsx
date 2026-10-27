@@ -511,7 +511,11 @@ function App() {
   const [editBusy, setEditBusy] = useState(false);
   const fileInput = useRef(null);
 
-  useEffect(() => { document.getElementById('rb-splash')?.remove(); }, []);
+  // Aplikasi sudah tampil: hapus layar "Menyiapkan…" bawaan HTML dan tanda percobaan muat ulang
+  useEffect(() => {
+    document.getElementById('rb-splash')?.remove();
+    try { sessionStorage.removeItem('rb_retry'); } catch {}
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
