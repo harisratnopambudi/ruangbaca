@@ -1059,6 +1059,8 @@ function App() {
     }
     const { error } = await supabase.rpc('create_order', { p_book_ids: ids, p_total: total, p_code: code });
     if (error) return { ok: false, error: error.message || 'Gagal membuat pesanan.' };
+    // create_order bisa menimpa status menjadi 'pending'; kembalikan ke 'menunggu pembayaran'
+    await supabase.rpc('qris_attach', { p_code: code });
     const order = await fetchOrderByCode(code);
     setCatalogSelected([]);
     loadOrders();
