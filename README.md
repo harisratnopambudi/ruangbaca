@@ -40,6 +40,7 @@ dengan aplikasi admin Windows untuk mengelola pesanan.
 - [Menjalankan di Komputer](#menjalankan-di-komputer)
 - [Menyiapkan Supabase](#menyiapkan-supabase)
 - [Deploy Situs](#deploy-situs)
+- [Pembayaran QRIS Otomatis](#pembayaran-qris-otomatis)
 - [Aplikasi Android](#aplikasi-android)
 - [Aplikasi Admin Windows](#aplikasi-admin-windows)
 - [Keamanan](#keamanan)
@@ -65,14 +66,15 @@ dengan aplikasi admin Windows untuk mengelola pesanan.
 |---|---|
 | **Rak buku pribadi** | Sampul otomatis, cari, urutkan, dan atur urutan dengan seret dan lepas |
 | **Katalog ebook** | Harga mulai Rp5.000, paket hemat 3 dan 10 ebook |
-| **Pembayaran QRIS** | Unggah bukti bayar, admin memverifikasi, buku langsung masuk rak |
+| **Pembayaran QRIS otomatis** | QRIS dinamis dengan nominal unik per pesanan; pembayaran terdeteksi otomatis dan buku langsung masuk rak dalam hitungan detik |
+| **Konfirmasi manual** | Cadangan jika pembayaran tidak terdeteksi: pembeli mengunggah bukti bayar, admin memverifikasi |
 | **Unggah EPUB sendiri** | Terbuka setelah pembelian pertama, mendukung banyak file sekaligus |
 
 ### Admin
 
 | | |
 |---|---|
-| **Kelola pesanan** | Pesanan masuk secara realtime, lihat bukti bayar, terima atau tolak |
+| **Kelola pesanan** | Pesanan masuk secara realtime, lihat bukti bayar, terima atau tolak. Pesanan yang lunas otomatis tidak perlu ditangani |
 | **Kelola akses** | Beri atau cabut akses buku per email |
 | **Buku contoh** | Tandai buku sebagai contoh gratis untuk pengguna baru |
 | **Aplikasi admin Windows** | Popup pesanan baru di pojok layar, suara notifikasi, angka di ikon tray |
@@ -110,7 +112,10 @@ ruangbaca/
 │   └── styles.css
 ├── supabase/
 │   ├── schema.sql            # Tabel dasar, RLS, dan bucket Storage
-│   └── security_hardening.sql# Lapisan keamanan tambahan (jalankan setelah schema)
+│   ├── security_hardening.sql# Lapisan keamanan tambahan (jalankan setelah schema)
+│   ├── qris_auto.sql         # Pembayaran QRIS otomatis: nominal unik & pencocokan notifikasi
+│   ├── qris_fix_1.sql        # Fungsi qris_attach (dipanggil setelah create_order)
+│   └── qris_fix_2.sql        # Penyesuaian dengan trigger pengaman trg_guard_orders
 ├── capacitor.config.json     # Konfigurasi aplikasi Android
 ├── index.html                # SEO, Open Graph, CSP
 └── vite.config.js
@@ -157,6 +162,7 @@ npm run preview   # pratinjau hasil build
 5. Buka **Authentication → URL Configuration**:
    - Site URL: `https://ruangbacaan.my.id`
    - Redirect URLs: `https://ruangbacaan.my.id/**`
+6. Untuk pembayaran otomatis, jalankan berurutan `qris_auto.sql`, `qris_fix_1.sql`, lalu `qris_fix_2.sql`. Lanjutkan ke [Pembayaran QRIS Otomatis](#pembayaran-qris-otomatis).
 
 > [!IMPORTANT]
 > Akses buku diberikan berdasarkan email, jadi **Confirm email wajib aktif**. Tanpa itu, orang lain bisa mendaftar dengan email pembeli.
@@ -176,6 +182,88 @@ Isi **Settings → Secrets and variables → Actions → Variables**:
 | `VITE_ADMIN_WHATSAPP` | Nomor WhatsApp admin (opsional) |
 
 Domain kustom diatur lewat `public/CNAME`.
+
+---
+
+## Pembayaran QRIS Otomatis
+
+Pembayaran terverifikasi tanpa payment gateway. Setiap pesanan mendapat **nominal unik** (harga + kode Rp1–Rp199), lalu notifikasi dana masuk dari aplikasi **Shopee Partner** di HP diteruskan oleh **MacroDroid** ke Supabase dan dicocokkan dengan pesanan.
+
+```text
+Pembeli checkout
+   → qris_reserve()  memesan kode unik
+   → create_order()  mencatat pesanan (total dihitung ulang di server)
+   → qris_attach()   status "menunggu pembayaran", nominal unik, batas 30 menit
+   → QRIS dinamis tampil di layar (nominal terisi otomatis)
+Pembeli membayar
+   → Shopee Partner: "Pembayaran sebesar Rp5.075 diterima ..."
+   → MacroDroid → POST /rest/v1/rpc/qris_notify
+   → nominal cocok → approve_order() → buku masuk rak, halaman pembeli berubah otomatis
+```
+
+### Status pesanan
+
+| Status | Arti |
+|---|---|
+| `awaiting_payment` | Pesanan dibuat, belum dibayar. Tidak muncul di daftar pesanan admin |
+| `pending` | Perlu dicek admin: pembeli mengunggah bukti bayar, atau pembayaran terdeteksi tetapi persetujuan otomatis gagal |
+| `approved` | Diterima. Kolom `paid_via = 'qris_auto'` jika lunas otomatis |
+| `expired` | Tidak dibayar sampai batas waktu (+15 menit toleransi bayar telat) |
+| `rejected` | Ditolak admin |
+
+### Pemasangan
+
+1. Jalankan `qris_auto.sql`, `qris_fix_1.sql`, dan `qris_fix_2.sql` di SQL Editor secara berurutan.
+2. Isi email akun admin, dipakai untuk menjalankan `approve_order` secara otomatis:
+   ```sql
+   update public.qris_config set admin_email = 'EMAIL_ADMIN' where id = 1;
+   ```
+3. Ambil kunci rahasia untuk MacroDroid:
+   ```sql
+   select secret from public.qris_config;
+   ```
+4. Di HP penerima notifikasi Shopee Partner, buat makro **MacroDroid**:
+
+   | Bagian | Isi |
+   |---|---|
+   | Pemicu | Kejadian perangkat → Notifikasi → **Notifikasi Diterima**; aplikasi **Shopee Partner**; isi tulisan **Berisi** `diterima` |
+   | Tindakan | Konektifitas → **Permintaan HTTP**, metode **POST** |
+   | URL | `https://PROJECT_ID.supabase.co/rest/v1/rpc/qris_notify` |
+   | Tipe konten | `application/json` |
+   | Badan konten | `{"p_secret":"KUNCI_RAHASIA","p_title":"[notification_title]","p_text":"[notification]"}` |
+   | Header `apikey` | anon key |
+   | Header `Authorization` | `Bearer ` + anon key |
+
+5. Atur baterai MacroDroid dan Shopee Partner menjadi **Tidak dibatasi** agar tidak dimatikan sistem.
+
+> [!CAUTION]
+> Kunci rahasia `qris_config.secret` hanya boleh ada di MacroDroid. Siapa pun yang mengetahuinya bisa mengirim notifikasi palsu. Jangan commit ke repo. Jika bocor, ganti dengan `update public.qris_config set secret = '...';` lalu perbarui MacroDroid.
+
+### Pengaturan
+
+Tersimpan di tabel `qris_config`:
+
+| Kolom | Default | Arti |
+|---|---|---|
+| `timeout_minutes` | 30 | Batas waktu pembeli membayar |
+| `grace_minutes` | 15 | Toleransi pembayaran yang telat |
+| `max_code` | 199 | Kode unik acak Rp1 sampai nilai ini |
+
+### Pemantauan
+
+```sql
+select created_at, amount, status, order_code, note
+from qris_payments order by created_at desc limit 20;
+```
+
+| Status log | Arti |
+|---|---|
+| `approved` | Cocok dan pesanan diterima otomatis |
+| `unmatched` | Nominal mirip pesanan tetapi tidak persis (misalnya dibulatkan). Cek manual |
+| `error` | Cocok, tetapi persetujuan otomatis gagal; pesanan masuk ke daftar admin dengan catatan |
+| `ignored` | Bukan pembayaran Ruang Bacaan (pemasukan lain lewat QRIS yang sama) |
+
+Jika HP penerima mati atau offline, pembayaran tidak terdeteksi otomatis. Pembeli tetap bisa menekan **"Sudah bayar tapi belum terdeteksi?"** untuk mengirim bukti bayar ke admin.
 
 ---
 
@@ -239,7 +327,9 @@ Detail pengembangan ada di [`admin-desktop/README.md`](admin-desktop/README.md).
 
 - **Row Level Security** di semua tabel: pengguna hanya bisa membaca dan mengubah datanya sendiri.
 - **Harga dihitung di server**: total pesanan tidak bisa dimanipulasi dari browser.
-- **Status pesanan dan akses buku** hanya bisa diubah admin, dicek dengan trigger database.
+- **Status pesanan dan akses buku** hanya bisa diubah admin, dicek dengan trigger database. Fungsi QRIS memakai jalur pengecualian `rb.recalc` hanya di dalam fungsi server.
+- **Nominal unik dihitung dari total resmi server**, bukan dari angka yang dikirim browser.
+- **Endpoint `qris_notify`** dilindungi kunci rahasia; notifikasi duplikat diabaikan berdasarkan nomor transaksi.
 - **Storage terkunci**: file EPUB hanya di folder pemilik, bukti bayar hanya bisa dilihat admin dan dihapus setelah diproses.
 - **Content Security Policy** di `index.html` membatasi sumber script dan koneksi.
 - **Konten EPUB dijalankan tanpa script** (`allowScriptedContent: false`).
