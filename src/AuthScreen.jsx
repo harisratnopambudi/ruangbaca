@@ -41,7 +41,7 @@ export default function AuthScreen(props) {
       {authMode === 'forgot' ? (
         <div className="auth-switch"><button onClick={() => { setAuthMessage(''); setAuthMode('login'); }}>Kembali ke halaman masuk</button></div>
       ) : authMode === 'login' && !signupOpen ? (
-        <div className="auth-switch">Pendaftaran akun baru sedang ditutup sementara.</div>
+        null
       ) : (
         <div className="auth-switch">{authMode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'} <button onClick={() => { setAuthMessage(''); setAuthMode(authMode === 'login' ? 'signup' : 'login'); }}>{authMode === 'login' ? 'Daftar sekarang' : 'Masuk'}</button></div>
       )}
