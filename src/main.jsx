@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { createClient } from '@supabase/supabase-js';
-import QRCode from 'qrcode';
+import AuthScreen from './AuthScreen.jsx';
+import './fonts.css';
 import {
   BookOpen, Plus, Search, Sun, Moon, LogOut, UploadCloud, Trash2,
   ChevronLeft, ChevronRight, List, X, LoaderCircle, LibraryBig,
@@ -315,6 +316,17 @@ const authStorage = {
     try { window.localStorage.removeItem(key); window.sessionStorage.removeItem(key); } catch {}
   }
 };
+// Ada sesi tersimpan / tautan login di URL? Jika tidak, halaman masuk bisa langsung tampil
+// tanpa menunggu (sama dengan logika public/boot.js untuk HTML pre-render).
+const hasSessionHint = () => {
+  try {
+    if (/access_token=|refresh_token=|type=recovery|[?&]code=/.test(window.location.hash + window.location.search)) return true;
+    for (const st of [window.localStorage, window.sessionStorage]) {
+      for (let i = 0; i < st.length; i++) if (/^sb-.*-auth-token$/.test(st.key(i) || '')) return true;
+    }
+  } catch { return true; }
+  return false;
+};
 const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey, { auth: { storage: authStorage, persistSession: true, autoRefreshToken: true } })
   : null;
@@ -472,7 +484,7 @@ const getBookMeta = async file => {
 
 function App() {
   const [session, setSession] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
+  const [authReady, setAuthReady] = useState(() => !hasSessionHint());
   const [authMode, setAuthMode] = useState('login');
   const [recovering, setRecovering] = useState(false);
   const [remember, setRemember] = useState(() => { try { return localStorage.getItem('rb_remember') !== '0'; } catch { return true; } });
@@ -498,6 +510,8 @@ function App() {
   const [editAuthor, setEditAuthor] = useState('');
   const [editBusy, setEditBusy] = useState(false);
   const fileInput = useRef(null);
+
+  useEffect(() => { document.getElementById('rb-splash')?.remove(); }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -3208,51 +3222,6 @@ function TocItem({item, onSelect, depth=0}) {
   </div>;
 }
 
-function AuthScreen(props) {
-  const {remember,setRemember,authMode,setAuthMode,setAuthMessage,email,setEmail,password,setPassword,authBusy,authMessage,handleAuth,theme,setTheme} = props;
-  const [showPassword, setShowPassword] = useState(false);
-  return <main className="auth-page">
-    <button className="auth-theme icon-button" title="Ganti tema" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button>
-    <div className="auth-card">
-      <div className="brand auth-brand"><div className="brand-mark"><BookOpen size={22}/></div><div><div className="brand-name">ruang bacaan</div><div className="brand-caption">PERPUSTAKAAN PRIBADI</div></div></div>
-      <div className="auth-illustration"><div className="auth-orbit"></div><div className="auth-book"><BookOpen size={43}/></div></div>
-      <div className="eyebrow muted">PERPUSTAKAAN DIGITAL ANDA</div>
-      <h1>{authMode === 'login' ? 'Senang melihat Anda kembali.' : authMode === 'forgot' ? 'Lupa kata sandi?' : 'Mulai bangun rak buku Anda.'}</h1>
-      <p className="auth-subtitle">{authMode === 'login' ? 'Masuk untuk melanjutkan cerita yang terakhir Anda baca.' : authMode === 'forgot' ? 'Masukkan email akun Anda. Kami akan mengirim tautan untuk mengatur ulang kata sandi.' : 'Buat akun untuk menyimpan koleksi dan progres membaca di cloud.'}</p>
-      <form onSubmit={handleAuth} className="auth-form">
-        <label>Email<input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nama@email.com" required autoComplete="email"/></label>
-        {authMode !== 'forgot' && (
-        <label>Kata sandi
-          <span className="password-field">
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={authMode === 'login' ? 'Kata sandi Anda' : 'Minimal 8 karakter'} required minLength={authMode === 'login' ? 6 : 8} maxLength={72} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}/>
-            <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)} title={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>
-              {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
-            </button>
-          </span>
-        </label>
-        )}
-        {authMode === 'login' && (
-          <div className="auth-options">
-            <label className="remember-check">
-              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}/>
-              <span>Ingat saya</span>
-            </label>
-            <button type="button" className="auth-forgot" onClick={() => { setAuthMessage(''); setAuthMode('forgot'); }}>Lupa kata sandi?</button>
-          </div>
-        )}
-        {authMessage && <div className="auth-message"><AlertCircle size={16}/>{authMessage}</div>}
-        <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? <LoaderCircle size={17} className="spin"/> : null}{authBusy ? 'Memproses…' : authMode === 'login' ? 'Masuk ke Ruang Bacaan' : authMode === 'forgot' ? 'Kirim tautan reset' : 'Buat akun'}</button>
-      </form>
-      {authMode === 'forgot' ? (
-        <div className="auth-switch"><button onClick={() => { setAuthMessage(''); setAuthMode('login'); }}>Kembali ke halaman masuk</button></div>
-      ) : (
-        <div className="auth-switch">{authMode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'} <button onClick={() => { setAuthMessage(''); setAuthMode(authMode === 'login' ? 'signup' : 'login'); }}>{authMode === 'login' ? 'Daftar sekarang' : 'Masuk'}</button></div>
-      )}
-      <div className="auth-privacy"><span className="privacy-dot"></span> Koleksi pribadi · Sinkronisasi cloud · Tanpa TTS</div>
-    </div>
-  </main>;
-}
-
 function ResetPasswordScreen({ theme, setTheme, onDone }) {
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
@@ -3657,7 +3626,7 @@ function CheckoutModal({ items, resumeOrder, email, onClose, onStart, onFetch, o
   useEffect(() => {
     if (!order?.pay_amount) return;
     let alive = true;
-    QRCode.toDataURL(qrisWithAmount(QRIS_STATIC, order.pay_amount), { width: 560, margin: 1, errorCorrectionLevel: 'M' })
+    import('qrcode').then(({ default: QRCode }) => QRCode.toDataURL(qrisWithAmount(QRIS_STATIC, order.pay_amount), { width: 560, margin: 1, errorCorrectionLevel: 'M' }))
       .then(url => { if (alive) setQrUrl(url); })
       .catch(() => { if (alive) setErr('QRIS gagal dibuat. Muat ulang halaman lalu coba lagi.'); });
     return () => { alive = false; };
@@ -3978,4 +3947,15 @@ function SetupMissing() {
   return <main className="setup-page"><div className="setup-card"><div className="brand-mark"><BookOpen size={22}/></div><h1>Hubungkan Ruang Bacaan ke Supabase</h1><p>Aplikasi hampir siap. Isi URL dan key Supabase di file <code>.env</code>, lalu jalankan ulang server.</p><ol><li>Buat proyek Supabase.</li><li>Salin <code>.env.example</code> menjadi <code>.env</code>.</li><li>Isi <code>VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code>.</li><li>Jalankan kembali <code>npm run dev</code>.</li></ol></div></main>;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+// Halaman masuk sudah ada sebagai HTML statis (scripts/prerender.mjs): pakai ulang lewat hydration
+// agar tidak digambar dua kali. Kondisi lain (sudah login, tema gelap, dll.) dirender biasa.
+const rootEl = document.getElementById('root');
+const canHydrate = (() => {
+  try {
+    return !!rootEl.querySelector('main[data-prerender]') && !!supabase && !hasSessionHint()
+      && (localStorage.getItem('ruang-baca-theme') || 'light') === 'light'
+      && localStorage.getItem('rb_remember') !== '0';
+  } catch { return false; }
+})();
+if (canHydrate) hydrateRoot(rootEl, <App />);
+else createRoot(rootEl).render(<App />);

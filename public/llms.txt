@@ -1,21 +1,30 @@
 # Ruang Bacaan
 
-> Ruang Bacaan adalah aplikasi web untuk membaca dan membeli ebook EPUB berbahasa Indonesia. Pengguna punya rak buku pribadi, progres baca tersinkron di cloud antarperangkat, serta bookmark dan stabilo. Dikelola oleh Haris DevLab.
+> Ruang Bacaan adalah aplikasi web dan Android untuk membaca dan membeli ebook EPUB berbahasa Indonesia. Pengguna punya rak buku pribadi, progres baca tersinkron di cloud antarperangkat, serta bookmark dan stabilo. Dikelola oleh Haris DevLab.
+
+Isi katalog dan rak buku hanya tampil setelah pengguna masuk (login). Halaman publik berisi halaman masuk/daftar dan informasi di bawah ini.
+
+## Halaman utama
+
+- [Ruang Bacaan](https://ruangbacaan.my.id/): Aplikasi web untuk masuk, membaca ebook, dan membeli ebook di katalog
+- [Peta situs](https://ruangbacaan.my.id/sitemap.xml): Daftar halaman publik untuk mesin pencari
 
 ## Ringkasan
-- URL: https://ruangbacaan.my.id/
+
 - Bahasa: Indonesia
 - Format buku: EPUB (tanpa DRM)
-- Platform: web, berjalan di browser HP, tablet, dan komputer
-- Harga ebook di katalog: mulai Rp5.000 per ebook; paket hemat 3 ebook dan 10 ebook
-- Pembayaran: QRIS, dikonfirmasi admin, buku langsung masuk ke rak pembeli
+- Platform: web (browser HP, tablet, dan komputer) dan aplikasi Android
+- Harga ebook di katalog: mulai Rp5.000 per ebook; paket 3 ebook Rp10.000 dan 10 ebook Rp30.000
+- Pembayaran: QRIS dinamis dengan nominal unik; pembayaran terdeteksi otomatis dan buku langsung masuk ke rak pembeli
 
 ## Fitur
-- Pembaca EPUB dengan mode paginasi, scroll, dan dua halaman
+
+- Pembaca EPUB dengan mode halaman, gulir, dan dua halaman
 - Tema terang, sepia, gelap; pilihan jenis huruf, ukuran teks, jarak baris, margin
 - Bookmark dan stabilo enam warna
 - Sinkronisasi progres baca di semua perangkat
 - Unggah EPUB sendiri (terbuka setelah membeli ebook di katalog)
 
-## Catatan
-- Isi katalog dan rak buku hanya tampil setelah login.
+## Optional
+
+- [Haris DevLab](https://harisdevlab.online/): Pengelola Ruang Bacaan, pembuat produk digital

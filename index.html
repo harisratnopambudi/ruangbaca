@@ -47,9 +47,9 @@
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23426c5b'/%3E%3Cpath d='M32 18c-4-3-10-4-17-3v31c7-1 13 0 17 3 4-3 10-4 17-3V15c-7-1-13 0-17 3z' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linejoin='round'/%3E%3Cpath d='M32 18v31' stroke='%23fff' stroke-width='3.5'/%3E%3C/svg%3E" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+    <!-- Font utama di-host sendiri (lihat src/main.jsx); boot.js memasang tema & mendeteksi sesi sebelum halaman digambar -->
+    <script src="./boot.js"></script>
+    <style>html.rb-session main[data-prerender],html:not(.rb-session) #rb-splash{display:none}</style>
 
     <!-- ===== Structured data (JSON-LD) ===== -->
     <script type="application/ld+json">
@@ -99,14 +99,13 @@
     </script>
   </head>
   <body>
-    <div id="root">
-      <!-- Tampil instan sebelum aplikasi siap; otomatis diganti React -->
-      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f6f5f1;color:#777e77;font-family:'DM Sans',system-ui,sans-serif">
-        <div style="width:46px;height:46px;border-radius:14px;background:#426c5b;display:grid;place-items:center">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
-        </div>
-        <span style="font-size:13px">Menyiapkan Ruang Bacaan…</span>
+    <div id="root"><!--prerender:auth--></div>
+    <!-- Layar "Menyiapkan…" untuk pengguna yang sudah login (pengunjung baru langsung melihat halaman masuk) -->
+    <div id="rb-splash" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg,#f6f5f1);color:var(--muted,#626962);font-family:'DM Sans',system-ui,sans-serif">
+      <div style="width:46px;height:46px;border-radius:14px;background:#426c5b;display:grid;place-items:center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
       </div>
+      <span style="font-size:13px">Menyiapkan Ruang Bacaan…</span>
     </div>
 
     <!-- Konten untuk crawler yang tidak menjalankan JavaScript (termasuk banyak crawler AI) -->
