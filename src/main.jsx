@@ -21,6 +21,28 @@ const AndroidIcon = ({ size = 24 }) => (
 // Changelog aplikasi: entri terbaru di paling atas
 const CHANGELOG = [
   {
+    version: '2.1.2',
+    date: '28 Oktober 2026',
+    shortDate: '28 Okt 2026',
+    groups: [
+      {
+        title: 'Tampilan lebih rapi',
+        icon: LibraryBig,
+        items: [
+          ['Judul buku tampil utuh', 'di rak dan katalog, tidak lagi terpotong atau tertimpa label.'],
+          ['Kartu buku tetap sejajar', 'walaupun panjang judulnya berbeda-beda.']
+        ]
+      },
+      {
+        title: 'Privasi buku',
+        icon: ShieldCheck,
+        items: [
+          ['Buku yang kamu unggah bersifat pribadi,', 'hanya tersimpan di rakmu dan tidak tampil di katalog.']
+        ]
+      }
+    ]
+  },
+  {
     version: '2.1.1',
     date: '27 Oktober 2026',
     shortDate: '27 Okt 2026',
@@ -1106,7 +1128,7 @@ function App() {
   // ---------- Katalog otomatis & pemesanan ----------
   const [tab, setTab] = useState('shelf');
   // Naikkan APP_VERSION setiap ada APK baru agar label "Update" berkedip lagi untuk semua pengguna
-  const APP_VERSION = '4';
+  const APP_VERSION = '5';
   const [appSeen, setAppSeen] = useState(() => {
     try { return localStorage.getItem('rb_app_seen') === APP_VERSION; } catch { return false; }
   });

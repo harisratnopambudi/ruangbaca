@@ -9,7 +9,7 @@ Rak buku di cloud, progres baca tersinkron di semua perangkat, tersedia di web d
 dengan aplikasi admin Windows untuk mengelola pesanan.
 
 [![Situs](https://img.shields.io/website?url=https%3A%2F%2Fruangbacaan.my.id&style=for-the-badge&label=ruangbacaan.my.id&up_message=online&down_message=offline&color=426c5b)](https://ruangbacaan.my.id)
-[![Android](https://img.shields.io/badge/Android-2.1.0-426c5b?style=for-the-badge&logo=android&logoColor=white)](https://ruangbacaan.my.id)
+[![Android](https://img.shields.io/badge/Android-2.1.2-426c5b?style=for-the-badge&logo=android&logoColor=white)](https://ruangbacaan.my.id)
 [![Admin Windows](https://img.shields.io/badge/Admin_Windows-1.0.0-2f4a3e?style=for-the-badge&logo=windows&logoColor=white)](#aplikasi-admin-windows)
 
 [![Deploy Web](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/deploy.yml/badge.svg)](https://github.com/harisratnopambudi/ruangbaca/actions/workflows/deploy.yml)

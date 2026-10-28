@@ -696,3 +696,4 @@ body.is-dragging-card *{cursor:grabbing !important}
 .maintenance-icon{display:grid;place-items:center;width:56px;height:56px;border-radius:16px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);margin-bottom:4px}
 .maintenance-card b{font-size:18px;letter-spacing:.02em}
 .maintenance-card p{margin:0;font-size:13.5px;line-height:1.6;color:var(--muted)}
+
