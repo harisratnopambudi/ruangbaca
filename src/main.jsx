@@ -1561,7 +1561,7 @@ function App() {
               </div>
               </>
              )}
-            <div className="privacy-note"><span className="privacy-dot"></span> Buku yang Anda unggah dapat tampil di katalog dan dibeli pengguna lain. Masuk dengan akun yang sama untuk mengaksesnya di perangkat lain.</div>
+            <div className="privacy-note"><span className="privacy-dot"></span> {isAdmin ? 'Buku yang Anda unggah tampil di katalog dan dapat dibeli pengguna lain.' : 'Buku yang Anda unggah bersifat pribadi dan hanya tersimpan di rak Anda.'} Masuk dengan akun yang sama untuk mengaksesnya di perangkat lain.</div>
           </section>
           )}
 
