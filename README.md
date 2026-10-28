@@ -289,10 +289,12 @@ Isi di **Settings → Secrets and variables → Actions → Secrets**:
 
 ### Membuat APK
 
-1. Buka tab **Actions → Build APK Android → Run workflow**.
-2. Tunggu sampai selesai, lalu unduh **RuangBacaan-apk** dari bagian **Artifacts**.
+**Rilis resmi (yang diunduh pengguna):** push tag versi, misalnya `git tag v2.1.2 && git push origin v2.1.2`. Workflow akan membangun APK lalu menerbitkannya di halaman **Releases**. Tombol unduh di situs selalu mengarah ke `releases/latest/download/RuangBacaan.apk`, jadi otomatis memakai rilis terbaru. Nomor versi aplikasi diambil dari nama tag.
 
-Nomor versi aplikasi diambil dari `version` di `package.json`.
+**Build uji coba:** buka tab **Actions → Build APK Android → Run workflow**, lalu unduh **RuangBacaan-apk** dari bagian **Artifacts**. Build ini tidak diterbitkan ke Releases, dan nomor versinya diambil dari `version` di `package.json`.
+
+> [!NOTE]
+> Satu tag hanya bisa dipakai sekali. Jangan membuat rilis manual dengan tag yang sama sebelum workflow selesai, karena langkah penerbitan akan gagal jika rilisnya sudah ada.
 
 ---
 
@@ -343,7 +345,7 @@ Menemukan celah keamanan? Mohon laporkan secara pribadi ke pengelola, jangan lew
 1. Naikkan `version` di `package.json`, misalnya `2.1.1`.
 2. Tambahkan entri baru di **paling atas** `CHANGELOG` di `src/main.jsx`.
 3. Naikkan `APP_VERSION` di `src/main.jsx` agar label *update* muncul lagi di tab Aplikasi Android.
-4. Push, jalankan **Build APK Android**, lalu perbarui file APK di Google Drive dengan **Upload new version** agar link unduhan di situs tetap sama.
+4. Push ke `main`, lalu buat dan push tag yang sama dengan versinya, misalnya `git tag v2.1.1 && git push origin v2.1.1`. APK otomatis terbit di **Releases** dan langsung dipakai tombol unduh di situs.
 
 Untuk aplikasi admin Windows, naikkan `version` di `admin-desktop/package.json`, `admin-desktop/src-tauri/Cargo.toml`, dan `admin-desktop/src-tauri/tauri.conf.json`, lalu jalankan **Build Admin Windows**.
 

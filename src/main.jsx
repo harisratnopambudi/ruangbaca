@@ -142,8 +142,8 @@ const CHANGELOG = [
 ];
 const APP_RELEASE = CHANGELOG[0];
 
-// APK di Google Drive (link unduh langsung, file harus dibagikan "Siapa saja yang memiliki link")
-const APK_URL = 'https://drive.google.com/uc?export=download&id=1_is99vclr1_Qum3ryq1EC_NfLgOqYw2T';
+// APK dari rilis GitHub terbaru (diterbitkan otomatis oleh workflow Build APK Android saat push tag v*)
+const APK_URL = 'https://github.com/harisratnopambudi/ruangbaca/releases/latest/download/RuangBacaan.apk';
 import { Capacitor } from '@capacitor/core';
 import './styles.css';
 
@@ -1128,7 +1128,7 @@ function App() {
   // ---------- Katalog otomatis & pemesanan ----------
   const [tab, setTab] = useState('shelf');
   // Naikkan APP_VERSION setiap ada APK baru agar label "Update" berkedip lagi untuk semua pengguna
-  const APP_VERSION = '5';
+  const APP_VERSION = '6';
   const [appSeen, setAppSeen] = useState(() => {
     try { return localStorage.getItem('rb_app_seen') === APP_VERSION; } catch { return false; }
   });
