@@ -3353,10 +3353,10 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
 
 // Dua buku dianggap sama hanya jika judul, penulis, dan ukuran file sama (versi/edisi berbeda tetap terpisah)
 const bookKey = (title, author, size) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}|${Number(size || 0)}`;
-const QRIS_NAME = 'HARISDEVLAB - SOFTWARE';
+const QRIS_NAME = 'RUANG BACAAN - SOFTWARE';
 
-// Isi QR dari qris.png (QRIS statis). Nominal disisipkan per pesanan menjadi QRIS dinamis.
-const QRIS_STATIC = '00020101021126610016ID.CO.SHOPEE.WWW01189360091800227881790208227881790303UMI51440014ID.CO.QRIS.WWW0215ID10264895026290303UMI5204581753033605802ID5912Haris DevLab6010PURWAKARTA61054118162070703A0163048C59';
+// Isi QR dari qris.png (QRIS statis, nama merchant tag 59 = QRIS_NAME). Nominal disisipkan per pesanan menjadi QRIS dinamis.
+const QRIS_STATIC = '00020101021126610016ID.CO.SHOPEE.WWW01189360091800227881790208227881790303UMI51440014ID.CO.QRIS.WWW0215ID10264895026290303UMI5204581753033605802ID5923RUANG BACAAN - SOFTWARE6010PURWAKARTA61054118162070703A016304640D';
 const qrisCrc = str => {
   let crc = 0xffff;
   for (let i = 0; i < str.length; i++) {
