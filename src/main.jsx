@@ -1322,9 +1322,19 @@ function App() {
   };
 
   const approveOrder = async o => {
-    if (!window.confirm(`Terima pesanan ${o.code} dan buka kunci ${(o.order_items || []).length} buku untuk ${o.user_email}?`)) return;
+    const n = (o.order_items || []).length;
+    const manual = o.status === 'awaiting_payment' || o.status === 'expired';
+    const ask = manual
+      ? `Pesanan ${o.code} belum terdeteksi lunas.\n\nPastikan dana ${formatRupiah(o.pay_amount || o.total)} dari ${o.user_email} sudah masuk di ShopeePay, lalu lanjutkan untuk membuka kunci ${n} buku.`
+      : `Terima pesanan ${o.code} dan buka kunci ${n} buku untuk ${o.user_email}?`;
+    if (!window.confirm(ask)) return;
     const { error } = await supabase.rpc('approve_order', { p_order_id: o.id });
-    if (error) { notify(error.message || 'Gagal menerima pesanan.', 'error'); return; }
+    if (error) {
+      const msg = manual && /sudah diproses|tidak ditemukan/i.test(error.message || '')
+        ? 'Server belum mengizinkan terima manual. Jalankan supabase/admin_manual_approve.sql di Supabase SQL Editor.'
+        : (error.message || 'Gagal menerima pesanan.');
+      notify(msg, 'error'); return;
+    }
     deleteProof(o.code);
     notify('Pesanan diterima. Buku sudah masuk ke rak pembeli.');
     loadOrders();
@@ -3542,6 +3552,11 @@ function OrdersSection({ orders, onApprove, onReject }) {
       </ul>
       <div className="order-card-foot">
         <span className="order-total">{formatRupiah(o.pay_amount || o.total)}{o.pay_amount ? <small className="order-total-base"> (harga {formatRupiah(o.total)})</small> : null}</span>
+        {(o.status === 'awaiting_payment' || o.status === 'expired') && (
+          <div className="order-actions single">
+            <button className="primary-button" onClick={() => onApprove(o)} title="Gunakan jika dana sudah masuk di ShopeePay tetapi tidak terdeteksi otomatis"><Check size={16}/> Terima manual</button>
+          </div>
+        )}
         {o.status === 'pending' && (
           <div className="order-actions">
             <button className="order-proof" onClick={() => viewProof(o)}><Eye size={15}/> Lihat bukti</button>
@@ -3557,10 +3572,7 @@ function OrdersSection({ orders, onApprove, onReject }) {
     <div className="section-heading">
       <div><div className="eyebrow muted">PESANAN MASUK</div><h2>Pesanan <span className="count">{pending.length}</span></h2></div>
     </div>
-    <p className="catalog-note">Pembayaran QRIS dengan nominal yang tepat diterima <b>otomatis</b>. Pesanan di bawah ini perlu dicek manual: lihat bukti bayar, lalu klik <b>Terima</b>. Foto bukti dihapus otomatis setelah pesanan diterima atau ditolak.</p>
-    {awaiting.length > 0 && (
-      <p className="order-awaiting-note"><Clock size={14}/> {awaiting.length} pesanan sedang menunggu pembeli membayar ({awaiting.map(o => formatRupiah(o.pay_amount)).join(', ')}).</p>
-    )}
+    <p className="catalog-note">Pembayaran QRIS dengan nominal yang tepat diterima <b>otomatis</b>. Pesanan di bawah ini perlu dicek manual: lihat bukti bayar, lalu klik <b>Terima</b>. Pesanan yang belum terbayar atau kedaluwarsa tetap bisa diterima manual jika dananya sudah masuk. Foto bukti dihapus otomatis setelah pesanan diterima atau ditolak.</p>
 
     {proofView && (
       <div className="modal-backdrop" onClick={() => setProofView(null)}>
@@ -3584,6 +3596,14 @@ function OrdersSection({ orders, onApprove, onReject }) {
       </div>
     ) : (
       <div className="order-list">{pending.map(renderOrder)}</div>
+    )}
+
+    {awaiting.length > 0 && (
+      <>
+        <h3 className="order-subhead"><Clock size={15}/> Menunggu pembayaran <span className="count">{awaiting.length}</span></h3>
+        <p className="order-awaiting-note">Pesanan ini diterima otomatis begitu pembeli membayar dengan nominal yang tepat. Jika dana sudah masuk di ShopeePay tetapi status belum berubah, klik <b>Terima manual</b>.</p>
+        <div className="order-list">{awaiting.map(renderOrder)}</div>
+      </>
     )}
 
     {history.length > 0 && (
