@@ -21,6 +21,20 @@ const AndroidIcon = ({ size = 24 }) => (
 // Changelog aplikasi: entri terbaru di paling atas
 const CHANGELOG = [
   {
+    version: '2.1.3',
+    date: '27 November 2026',
+    shortDate: '27 Nov 2026',
+    groups: [
+      {
+        title: 'Pembayaran',
+        icon: QrCode,
+        items: [
+          ['QRIS baru atas nama Ruang Bacaan', 'sesuai QRIS resmi. Nominal tetap terisi otomatis saat di-scan.']
+        ]
+      }
+    ]
+  },
+  {
     version: '2.1.2',
     date: '28 Oktober 2026',
     shortDate: '28 Okt 2026',
@@ -1128,7 +1142,7 @@ function App() {
   // ---------- Katalog otomatis & pemesanan ----------
   const [tab, setTab] = useState('shelf');
   // Naikkan APP_VERSION setiap ada APK baru agar label "Update" berkedip lagi untuk semua pengguna
-  const APP_VERSION = '5';
+  const APP_VERSION = '6';
   const [appSeen, setAppSeen] = useState(() => {
     try { return localStorage.getItem('rb_app_seen') === APP_VERSION; } catch { return false; }
   });
