@@ -3355,8 +3355,8 @@ function ResetPasswordScreen({ theme, setTheme, onDone }) {
 const bookKey = (title, author, size) => `${String(title || '').trim().toLowerCase()}|${String(author || '').trim().toLowerCase()}|${Number(size || 0)}`;
 const QRIS_NAME = 'RUANG BACAAN - SOFTWARE';
 
-// Isi QR dari qris.png (QRIS statis, nama merchant tag 59 = QRIS_NAME). Nominal disisipkan per pesanan menjadi QRIS dinamis.
-const QRIS_STATIC = '00020101021126610016ID.CO.SHOPEE.WWW01189360091800227881790208227881790303UMI51440014ID.CO.QRIS.WWW0215ID10264895026290303UMI5204581753033605802ID5923RUANG BACAAN - SOFTWARE6010PURWAKARTA61054118162070703A016304640D';
+// Isi QR resmi dari stiker QRIS ShopeePay (NMID ID1026489502629, A01), disalin apa adanya. Nominal disisipkan per pesanan menjadi QRIS dinamis.
+const QRIS_STATIC = '00020101021126610016ID.CO.SHOPEE.WWW01189360091800227881790208227881790303UMI51440014ID.CO.QRIS.WWW0215ID10264895026290303UMI5204581753033605802ID5912Ruang Bacaan6010PURWAKARTA61054118162070703A0163046479';
 const qrisCrc = str => {
   let crc = 0xffff;
   for (let i = 0; i < str.length; i++) {
